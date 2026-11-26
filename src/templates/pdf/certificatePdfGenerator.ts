@@ -2,7 +2,7 @@ import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
 import JSZip from 'jszip';
 import { DEFAULT_VALIDATION_DISCLAIMER } from '@/lib/database/defaults';
-import { formatDateAR } from '@/lib/utils/formatters';
+import { formatDateAR, resolveCertificateValidationUrl } from '@/lib/utils/formatters';
 import type { Certificate, SchoolSettings } from '@/types/domain';
 
 let cachedLogoDataUrl: string | null = null;
@@ -251,7 +251,8 @@ async function renderCertificateOnPage(
   pdf.setLineWidth(0.35);
   pdf.line(frameX, qrBandY, frameX + frameW, qrBandY);
 
-  const qrDataUrl = await QRCode.toDataURL(cert.validationUrl, {
+  const validationUrl = resolveCertificateValidationUrl(cert.validationUrl, cert.token);
+  const qrDataUrl = await QRCode.toDataURL(validationUrl, {
     width: 220,
     margin: 1,
     color: { dark: '#0f172a', light: '#ffffff' },
@@ -275,7 +276,7 @@ async function renderCertificateOnPage(
   pdf.setTextColor(51, 65, 85);
   pdf.text(`Token de validación: ${cert.token}`, metaX, qrBandY + 13);
 
-  const urlLines = pdf.splitTextToSize(`URL de verificación: ${cert.validationUrl}`, metaW);
+  const urlLines = pdf.splitTextToSize(`URL de verificación: ${validationUrl}`, metaW);
   pdf.text(urlLines, metaX, qrBandY + 17.5);
 
   const disclaimer = settings?.validationDisclaimer || DEFAULT_VALIDATION_DISCLAIMER;

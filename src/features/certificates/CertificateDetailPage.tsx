@@ -30,6 +30,7 @@ import {
   formatDateAR,
   formatDateTimeAR,
   formatDniDisplay,
+  resolveCertificateValidationUrl,
 } from '@/lib/utils/formatters';
 
 export const CertificateDetailPage: React.FC = () => {
@@ -53,10 +54,11 @@ export const CertificateDetailPage: React.FC = () => {
   const cert = certQuery.data;
 
   useEffect(() => {
-    if (cert?.validationUrl) {
-      void QRCode.toDataURL(cert.validationUrl, { width: 200, margin: 1 }).then(setQrImg);
+    if (cert?.token) {
+      const url = resolveCertificateValidationUrl(cert.validationUrl, cert.token);
+      void QRCode.toDataURL(url, { width: 200, margin: 1 }).then(setQrImg);
     }
-  }, [cert?.validationUrl]);
+  }, [cert?.validationUrl, cert?.token]);
 
   if (certQuery.isLoading) {
     return <SkeletonBlock className="h-72 w-full" />;

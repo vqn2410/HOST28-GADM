@@ -217,14 +217,28 @@ export function parseLegacyCourseCode(code?: string): { yearNumber: number; divi
   return { yearNumber, division };
 }
 
-/** Construye la URL pública de validación desde configuración de entorno (sin hardcodear). */
+/** Construye la URL pública de validación desde configuración de entorno o dominio actual (nunca localhost en producción). */
 export function buildValidationUrl(token: string): string {
-  const envUrl = import.meta.env.VITE_PUBLIC_APP_URL as string | undefined;
+  const envUrl = ((import.meta.env.VITE_PUBLIC_APP_URL as string | undefined) || '')
+    .trim()
+    .replace(/\/+$/, '');
+  const browserOrigin =
+    typeof window !== 'undefined' ? window.location.origin.replace(/\/+$/, '') : '';
+
+  const isLocal = (u: string) => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(u);
+
   const origin =
-    envUrl && envUrl.trim().length > 0
-      ? envUrl.trim().replace(/\/+$/, '')
-      : typeof window !== 'undefined'
-        ? window.location.origin
-        : '';
+    envUrl && !(isLocal(envUrl) && browserOrigin && !isLocal(browserOrigin))
+      ? envUrl
+      : browserOrigin || envUrl;
+
   return `${origin}/validar/${encodeURIComponent(token)}`;
+}
+
+/** Resuelve la URL de validación de un certificado, reemplazando `localhost` si ahora se imprime desde producción. */
+export function resolveCertificateValidationUrl(storedUrl: string | undefined, token: string): string {
+  if (!storedUrl || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(storedUrl)) {
+    return buildValidationUrl(token);
+  }
+  return storedUrl;
 }
