@@ -162,6 +162,23 @@ Se extiende la presente a pedido del/la interesado/a para ser presentada ante: {
   },
 ];
 
+export const MANUAL_COURSE_OPTIONS = [
+  { id: '1_1', yearNumber: 1, division: '1ª', shiftName: 'Mañana', label: '1º 1ª - Turno Mañana' },
+  { id: '1_2', yearNumber: 1, division: '2ª', shiftName: 'Tarde', label: '1º 2ª - Turno Tarde' },
+  { id: '1_3', yearNumber: 1, division: '3ª', shiftName: 'Tarde', label: '1º 3ª - Turno Tarde' },
+  { id: '2_1', yearNumber: 2, division: '1ª', shiftName: 'Mañana', label: '2º 1ª - Turno Mañana' },
+  { id: '2_2', yearNumber: 2, division: '2ª', shiftName: 'Tarde', label: '2º 2ª - Turno Tarde' },
+  { id: '2_3', yearNumber: 2, division: '3ª', shiftName: 'Tarde', label: '2º 3ª - Turno Tarde' },
+  { id: '3_1', yearNumber: 3, division: '1ª', shiftName: 'Mañana', label: '3º 1ª - Turno Mañana' },
+  { id: '3_2', yearNumber: 3, division: '2ª', shiftName: 'Tarde', label: '3º 2ª - Turno Tarde' },
+  { id: '4_1', yearNumber: 4, division: '1ª', shiftName: 'Mañana', label: '4º 1ª - Turno Mañana' },
+  { id: '4_2', yearNumber: 4, division: '2ª', shiftName: 'Tarde', label: '4º 2ª - Turno Tarde' },
+  { id: '5_1', yearNumber: 5, division: '1ª', shiftName: 'Mañana', label: '5º 1ª - Turno Mañana' },
+  { id: '5_2', yearNumber: 5, division: '2ª', shiftName: 'Tarde', label: '5º 2ª - Turno Tarde' },
+  { id: '6_1', yearNumber: 6, division: '1ª', shiftName: 'Mañana', label: '6º 1ª - Turno Mañana' },
+  { id: '6_2', yearNumber: 6, division: '2ª', shiftName: 'Tarde', label: '6º 2ª - Turno Tarde' },
+] as const;
+
 export const TEMPLATE_VARIABLES = [
   '{{apellido}}',
   '{{nombre}}',

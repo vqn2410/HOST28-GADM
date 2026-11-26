@@ -13,6 +13,7 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '@/providers/AuthProvider';
 import { useAcademicYear } from '@/providers/AcademicYearProvider';
+import { MANUAL_COURSE_OPTIONS } from '@/lib/database/defaults';
 import { listStudents } from '@/repositories/studentRepository';
 import { listEnrollments } from '@/repositories/academicRepository';
 import { issueCertificate, listTemplates } from '@/repositories/certificateRepository';
@@ -64,9 +65,7 @@ export const CertificateIssuePage: React.FC<{ defaultTypeCode?: string }> = ({
   const [manualApellido, setManualApellido] = useState('');
   const [manualNombre, setManualNombre] = useState('');
   const [manualDni, setManualDni] = useState('');
-  const [manualCurso, setManualCurso] = useState('1');
-  const [manualDivision, setManualDivision] = useState('1ª');
-  const [manualTurno, setManualTurno] = useState('Mañana');
+  const [manualCourseKey, setManualCourseKey] = useState<string>(MANUAL_COURSE_OPTIONS[0].id);
 
   const [issueDate, setIssueDate] = useState(getArgentinaDateISO());
   const [destinatario, setDestinatario] = useState('ante quien corresponda');
@@ -130,12 +129,14 @@ export const CertificateIssuePage: React.FC<{ defaultTypeCode?: string }> = ({
     const cleanDni = normalizeDni(manualDni);
     const ap = manualApellido.trim();
     const nom = manualNombre.trim();
-    if (!ap || !nom || !cleanDni || !manualDivision.trim()) {
+    const courseOpt =
+      MANUAL_COURSE_OPTIONS.find((c) => c.id === manualCourseKey) ?? MANUAL_COURSE_OPTIONS[0];
+    if (!ap || !nom || !cleanDni) {
       return { effectiveStudent: null, effectiveEnrollment: null };
     }
     const now = getArgentinaNowISO();
-    const yearNum = Number(manualCurso) || 1;
-    const { label, legacyCode } = formatCourseLabels(yearNum, manualDivision.trim());
+    const yearNum = courseOpt.yearNumber;
+    const { label, legacyCode } = formatCourseLabels(yearNum, courseOpt.division);
     const student: Student = {
       id: `manual_${cleanDni}`,
       dni: cleanDni,
@@ -152,13 +153,13 @@ export const CertificateIssuePage: React.FC<{ defaultTypeCode?: string }> = ({
       studentId: student.id,
       studentDni: cleanDni,
       academicYearId: yearId,
-      courseId: `manual_${yearNum}_${manualDivision.trim()}`,
+      courseId: `manual_${yearNum}_${courseOpt.division}`,
       yearNumber: yearNum,
-      division: manualDivision.trim(),
+      division: courseOpt.division,
       courseLabel: label,
       courseLegacyCode: legacyCode,
-      shiftId: manualTurno.toLowerCase(),
-      shiftName: manualTurno,
+      shiftId: courseOpt.shiftName.toLowerCase(),
+      shiftName: courseOpt.shiftName,
       startDate: issueDate,
       status: 'activa',
       createdBy: user?.dni || 'admin',
@@ -173,9 +174,7 @@ export const CertificateIssuePage: React.FC<{ defaultTypeCode?: string }> = ({
     manualApellido,
     manualNombre,
     manualDni,
-    manualCurso,
-    manualDivision,
-    manualTurno,
+    manualCourseKey,
     yearId,
     issueDate,
     user?.dni,
@@ -469,34 +468,17 @@ export const CertificateIssuePage: React.FC<{ defaultTypeCode?: string }> = ({
                     />
                   </div>
                   <div>
-                    <FieldLabel required>Turno</FieldLabel>
-                    <Select value={manualTurno} onChange={(e) => setManualTurno(e.target.value)}>
-                      <option value="Mañana">Mañana</option>
-                      <option value="Tarde">Tarde</option>
-                      <option value="Vespertino">Vespertino</option>
-                      <option value="Noche">Noche</option>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <FieldLabel required>Curso (Año)</FieldLabel>
-                    <Select value={manualCurso} onChange={(e) => setManualCurso(e.target.value)}>
-                      {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                        <option key={n} value={String(n)}>
-                          {n}° año
+                    <FieldLabel required>Curso, División y Turno</FieldLabel>
+                    <Select
+                      value={manualCourseKey}
+                      onChange={(e) => setManualCourseKey(e.target.value)}
+                    >
+                      {MANUAL_COURSE_OPTIONS.map((opt) => (
+                        <option key={opt.id} value={opt.id}>
+                          {opt.label}
                         </option>
                       ))}
                     </Select>
-                  </div>
-                  <div>
-                    <FieldLabel required>División</FieldLabel>
-                    <Input
-                      value={manualDivision}
-                      onChange={(e) => setManualDivision(e.target.value)}
-                      placeholder="Ej. 1ª, 2ª, 3ª"
-                      required
-                    />
                   </div>
                 </div>
               </div>
