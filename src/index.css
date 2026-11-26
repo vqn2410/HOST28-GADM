@@ -1,0 +1,101 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap');
+@import "tailwindcss";
+@import "./styles/design-tokens.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Outfit', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --color-brand-50: var(--sgae-brand-50);
+  --color-brand-100: var(--sgae-brand-100);
+  --color-brand-200: var(--sgae-brand-200);
+  --color-brand-300: var(--sgae-brand-300);
+  --color-brand-400: var(--sgae-brand-400);
+  --color-brand-500: var(--sgae-brand-500);
+  --color-brand-600: var(--sgae-brand-600);
+  --color-brand-700: var(--sgae-brand-700);
+  --color-brand-800: var(--sgae-brand-800);
+  --color-brand-900: var(--sgae-brand-900);
+
+  --color-emerald-brand-50: var(--sgae-emerald-50);
+  --color-emerald-brand-100: var(--sgae-emerald-100);
+  --color-emerald-brand-500: var(--sgae-emerald-500);
+  --color-emerald-brand-600: var(--sgae-emerald-600);
+  --color-emerald-brand-700: var(--sgae-emerald-700);
+
+  --color-gold-brand-100: var(--sgae-gold-100);
+  --color-gold-brand-500: var(--sgae-gold-500);
+  --color-gold-brand-700: var(--sgae-gold-700);
+
+  --color-surface-canvas: var(--sgae-surface-canvas);
+  --color-surface-card: var(--sgae-surface-card);
+  --color-surface-elevated: var(--sgae-surface-elevated);
+  --color-surface-subtle: var(--sgae-surface-subtle);
+  --color-surface-sidebar: var(--sgae-surface-sidebar);
+
+  --color-ink-primary: var(--sgae-ink-primary);
+  --color-ink-secondary: var(--sgae-ink-secondary);
+  --color-ink-muted: var(--sgae-ink-muted);
+
+  --color-border-subtle: var(--sgae-border-subtle);
+  --color-border-strong: var(--sgae-border-strong);
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--sgae-surface-canvas);
+    color: var(--sgae-ink-primary);
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+  }
+}
+
+/* Institutional Banner Pattern */
+.institutional-banner {
+  background: linear-gradient(125deg, #0e1b33 0%, #1d3e7a 55%, #2f5499 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.institutional-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle at 88% 18%, rgba(0, 160, 89, 0.22), transparent 42%),
+    radial-gradient(circle at 12% 90%, rgba(252, 208, 85, 0.14), transparent 36%);
+  pointer-events: none;
+}
+
+/* Subtle Scrollbar */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--sgae-border-strong);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--sgae-brand-500);
+}
+
+/* Focus ring accesible */
+:focus-visible {
+  outline: 2px solid var(--sgae-border-focus);
+  outline-offset: 2px;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // REGLAS COMPARTIDAS: HOST28_EF + SGAE (Proyecto `partesees28`)
+    // Preservan 100% la compatibilidad con el Host de Educación Física existente
+    // y añaden colecciones segregadas con prefijo `sgae_`.
+    // =========================================================================
+
+    function isAuthenticatedCompat() {
+      // Compatibilidad con la autenticación por DNI actual de HOST28_EF.
+      // Cuando ambas aplicaciones migren a Firebase Auth, reemplazar por:
+      // return request.auth != null;
+      return true;
+    }
+
+    // --- Colecciones existentes de HOST28_EF (NO romper) ---
+    match /usuarios/{dni} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /alumnos/{dni} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /cursosConfig/{curso} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /partes/{parteId} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /solicitudes/{solicitudId} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /informes/{informeId} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /notificaciones/{notifId} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /feriados/{feriadoId} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+
+    // --- Colecciones exclusivas de SGAE ---
+    match /sgae_academic_years/{id} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /sgae_shifts/{id} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /sgae_courses/{id} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /sgae_enrollments/{id} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /sgae_enrollment_movements/{id} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /sgae_certificate_templates/{id} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /sgae_certificate_counters/{year} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /sgae_certificates/{certId} {
+      // Inmutabilidad: un certificado emitido nunca se elimina físicamente.
+      allow read, create, update: if isAuthenticatedCompat();
+      allow delete: if false;
+    }
+    match /sgae_settings/{docId} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /sgae_users/{dni} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /sgae_audit_logs/{logId} {
+      // Auditoría de solo anexado (append-only): no se edita ni se borra.
+      allow read, create: if isAuthenticatedCompat();
+      allow update, delete: if false;
+    }
+  }
+}

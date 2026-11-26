@@ -1,0 +1,119 @@
+/* ==========================================================================
+   SGAE Design System — Tokens Institucionales
+   E.E.S. N° 28 "Gustavo Cerati" — Lanús, Provincia de Buenos Aires
+   Paleta derivada del logotipo oficial institucional + modo claro/oscuro.
+   ========================================================================== */
+
+:root {
+  /* Marca Institucional */
+  --sgae-brand-50: #f0f5fa;
+  --sgae-brand-100: #dce7f5;
+  --sgae-brand-200: #b9cfeb;
+  --sgae-brand-300: #8aaddb;
+  --sgae-brand-400: #5581c2;
+  --sgae-brand-500: #2f5499;
+  --sgae-brand-600: #1d3e7a;
+  --sgae-brand-700: #142a54;
+  --sgae-brand-800: #0f2040;
+  --sgae-brand-900: #0a152a;
+
+  /* Acento Esmeralda Institucional */
+  --sgae-emerald-50: #e6f7ee;
+  --sgae-emerald-100: #c9eeda;
+  --sgae-emerald-500: #00a059;
+  --sgae-emerald-600: #00874a;
+  --sgae-emerald-700: #006b3c;
+
+  /* Acento Oro Institucional */
+  --sgae-gold-100: #fef6d8;
+  --sgae-gold-500: #fcd055;
+  --sgae-gold-700: #a17407;
+
+  /* Superficies (Modo Claro) */
+  --sgae-surface-canvas: #f5f7fb;
+  --sgae-surface-card: #ffffff;
+  --sgae-surface-elevated: #ffffff;
+  --sgae-surface-subtle: #f1f5f9;
+  --sgae-surface-sidebar: #0e1b33;
+  --sgae-surface-sidebar-hover: #172a4d;
+  --sgae-surface-sidebar-active: #2f5499;
+
+  /* Textos (Modo Claro) */
+  --sgae-ink-primary: #0f172a;
+  --sgae-ink-secondary: #475569;
+  --sgae-ink-muted: #64748b;
+  --sgae-ink-inverse: #ffffff;
+
+  /* Bordes */
+  --sgae-border-subtle: #e2e8f0;
+  --sgae-border-strong: #cbd5e1;
+  --sgae-border-focus: #2f5499;
+
+  /* Semánticos */
+  --sgae-status-success-bg: #ecfdf5;
+  --sgae-status-success-text: #065f46;
+  --sgae-status-success-border: #a7f3d0;
+
+  --sgae-status-warning-bg: #fffbeb;
+  --sgae-status-warning-text: #92400e;
+  --sgae-status-warning-border: #fde68a;
+
+  --sgae-status-danger-bg: #fef2f2;
+  --sgae-status-danger-text: #991b1b;
+  --sgae-status-danger-border: #fecaca;
+
+  --sgae-status-info-bg: #eff6ff;
+  --sgae-status-info-text: #1e40af;
+  --sgae-status-info-border: #bfdbfe;
+
+  /* Radios y Sombras */
+  --sgae-radius-sm: 0.5rem;
+  --sgae-radius-md: 0.75rem;
+  --sgae-radius-lg: 1rem;
+  --sgae-radius-xl: 1.25rem;
+
+  --sgae-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --sgae-shadow-sm: 0 2px 6px -1px rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+  --sgae-shadow-md: 0 10px 24px -6px rgba(15, 23, 42, 0.08), 0 4px 10px -4px rgba(15, 23, 42, 0.04);
+  --sgae-shadow-lg: 0 20px 40px -12px rgba(15, 23, 42, 0.14);
+}
+
+.dark {
+  --sgae-surface-canvas: #0b1220;
+  --sgae-surface-card: #111b2e;
+  --sgae-surface-elevated: #162238;
+  --sgae-surface-subtle: #192640;
+  --sgae-surface-sidebar: #09101d;
+  --sgae-surface-sidebar-hover: #13213c;
+  --sgae-surface-sidebar-active: #2f5499;
+
+  --sgae-ink-primary: #f1f5f9;
+  --sgae-ink-secondary: #cbd5e1;
+  --sgae-ink-muted: #94a3b8;
+  --sgae-ink-inverse: #ffffff;
+
+  --sgae-border-subtle: #1e2d48;
+  --sgae-border-strong: #2d4266;
+  --sgae-border-focus: #5581c2;
+
+  --sgae-status-success-bg: rgba(16, 185, 129, 0.14);
+  --sgae-status-success-text: #6ee7b7;
+  --sgae-status-success-border: rgba(16, 185, 129, 0.3);
+
+  --sgae-status-warning-bg: rgba(245, 158, 11, 0.14);
+  --sgae-status-warning-text: #fcd34d;
+  --sgae-status-warning-border: rgba(245, 158, 11, 0.3);
+
+  --sgae-status-danger-bg: rgba(239, 68, 68, 0.14);
+  --sgae-status-danger-text: #fca5a5;
+  --sgae-status-danger-border: rgba(239, 68, 68, 0.3);
+
+  --sgae-status-info-bg: rgba(59, 130, 246, 0.14);
+  --sgae-status-info-text: #93c5fd;
+  --sgae-status-info-border: rgba(59, 130, 246, 0.3);
+
+  --sgae-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --sgae-shadow-sm: 0 4px 10px -2px rgba(0, 0, 0, 0.35);
+  --sgae-shadow-md: 0 14px 28px -8px rgba(0, 0, 0, 0.45);
+  --sgae-shadow-lg: 0 24px 48px -12px rgba(0, 0, 0, 0.6);
+}
