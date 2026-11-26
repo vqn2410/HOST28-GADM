@@ -201,8 +201,11 @@ export const QuickPreceptoraIssuePage: React.FC = () => {
       });
 
       await queryClient.invalidateQueries({ queryKey: ['certificates'] });
-      await downloadCertificatePdf(cert, settings);
-      toast.success(`Constancia ${cert.certificateNumber} generada y descargada.`);
+      toast.success(
+        `Constancia ${cert.certificateNumber} emitida. Podés descargar el PDF en el listado de abajo.`
+      );
+      setSelectedDni('');
+      setStudentSearch('');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al emitir la constancia.');
     } finally {
@@ -410,7 +413,7 @@ export const QuickPreceptoraIssuePage: React.FC = () => {
                 loading={issuing}
                 disabled={!selectedStudent || !studentEnrollment}
               >
-                <Download size={16} /> Emitir y descargar PDF con QR
+                <FileBadge2 size={16} /> Emitir
               </Button>
             </Card>
           </form>
