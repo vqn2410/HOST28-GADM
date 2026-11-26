@@ -308,6 +308,35 @@ export async function downloadCertificatePdf(
   pdf.save(`${safeName}.pdf`);
 }
 
+export async function printCertificatePdf(
+  cert: Certificate,
+  settings?: SchoolSettings
+): Promise<void> {
+  const blob = await generateCertificatePdfBlob(cert, settings);
+  const url = URL.createObjectURL(blob);
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  iframe.src = url;
+  document.body.appendChild(iframe);
+  iframe.onload = () => {
+    try {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    } catch {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      iframe.remove();
+    }, 60_000);
+  };
+}
+
 export async function downloadConsolidatedCertificatesPdf(
   certs: Certificate[],
   settings?: SchoolSettings,

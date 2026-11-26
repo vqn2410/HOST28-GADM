@@ -1,13 +1,14 @@
 import React, { useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   FileBadge2,
   AlertTriangle,
   CheckCircle2,
-  Download,
   Search,
+  Users,
+  UserPen,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/providers/AuthProvider';
@@ -16,11 +17,14 @@ import { listStudents } from '@/repositories/studentRepository';
 import { listEnrollments } from '@/repositories/academicRepository';
 import { issueCertificate, listTemplates } from '@/repositories/certificateRepository';
 import { logAudit } from '@/repositories/auditRepository';
-import { downloadCertificatePdf } from '@/templates/pdf/certificatePdfGenerator';
 import {
+  buildLegacyFullName,
+  formatCourseLabels,
   formatDateLongAR,
   formatDniDisplay,
   getArgentinaDateISO,
+  getArgentinaNowISO,
+  normalizeDni,
   renderTemplate,
 } from '@/lib/utils/formatters';
 import {
@@ -33,6 +37,8 @@ import {
   Select,
   Textarea,
 } from '@/components/ui/Primitives';
+import { CertificateSuccessModal } from '@/features/certificates/CertificateSuccessModal';
+import type { Certificate, Enrollment, Student } from '@/types/domain';
 
 export const CertificateIssuePage: React.FC<{ defaultTypeCode?: string }> = ({
   defaultTypeCode,
@@ -40,12 +46,12 @@ export const CertificateIssuePage: React.FC<{ defaultTypeCode?: string }> = ({
   const { user } = useAuth();
   const { academicYears, selectedYearId, settings } = useAcademicYear();
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const preselectedDni = searchParams.get('dni') || '';
   const replacesId = searchParams.get('reemplaza') || null;
 
+  const [sourceMode, setSourceMode] = useState<'system' | 'manual'>('system');
   const [typeCode, setTypeCode] = useState(defaultTypeCode || 'alumno_regular');
   const [yearId, setYearId] = useState(selectedYearId);
   const [cicloLectivoDestino, setCicloLectivoDestino] = useState(() =>
@@ -53,12 +59,22 @@ export const CertificateIssuePage: React.FC<{ defaultTypeCode?: string }> = ({
   );
   const [studentSearch, setStudentSearch] = useState(preselectedDni);
   const [selectedDni, setSelectedDni] = useState(preselectedDni);
+
+  // Carga manual personalizada
+  const [manualApellido, setManualApellido] = useState('');
+  const [manualNombre, setManualNombre] = useState('');
+  const [manualDni, setManualDni] = useState('');
+  const [manualCurso, setManualCurso] = useState('1');
+  const [manualDivision, setManualDivision] = useState('1ª');
+  const [manualTurno, setManualTurno] = useState('Mañana');
+
   const [issueDate, setIssueDate] = useState(getArgentinaDateISO());
   const [destinatario, setDestinatario] = useState('ante quien corresponda');
   const [motivo, setMotivo] = useState('');
   const [textoPersonalizado, setTextoPersonalizado] = useState('');
   const [observaciones, setObservaciones] = useState('');
   const [issuing, setIssuing] = useState(false);
+  const [generatedCert, setGeneratedCert] = useState<Certificate | null>(null);
 
   const templatesQuery = useQuery({ queryKey: ['templates'], queryFn: listTemplates });
   const studentsQuery = useQuery({ queryKey: ['students'], queryFn: listStudents });
@@ -104,25 +120,86 @@ export const CertificateIssuePage: React.FC<{ defaultTypeCode?: string }> = ({
   const todayISO = getArgentinaDateISO();
   const isCustomDate = issueDate !== todayISO;
 
+  const { effectiveStudent, effectiveEnrollment } = useMemo((): {
+    effectiveStudent: Student | null;
+    effectiveEnrollment: Enrollment | null;
+  } => {
+    if (sourceMode === 'system') {
+      return { effectiveStudent: selectedStudent, effectiveEnrollment: studentEnrollment };
+    }
+    const cleanDni = normalizeDni(manualDni);
+    const ap = manualApellido.trim();
+    const nom = manualNombre.trim();
+    if (!ap || !nom || !cleanDni || !manualDivision.trim()) {
+      return { effectiveStudent: null, effectiveEnrollment: null };
+    }
+    const now = getArgentinaNowISO();
+    const yearNum = Number(manualCurso) || 1;
+    const { label, legacyCode } = formatCourseLabels(yearNum, manualDivision.trim());
+    const student: Student = {
+      id: `manual_${cleanDni}`,
+      dni: cleanDni,
+      apellido: ap,
+      nombres: nom,
+      nombre: buildLegacyFullName(ap, nom),
+      anioIngreso: Number(yearId) || new Date().getFullYear(),
+      estadoInstitucional: 'activo',
+      createdAt: now,
+      updatedAt: now,
+    };
+    const enrollment: Enrollment = {
+      id: `manual_enr_${yearId}_${cleanDni}`,
+      studentId: student.id,
+      studentDni: cleanDni,
+      academicYearId: yearId,
+      courseId: `manual_${yearNum}_${manualDivision.trim()}`,
+      yearNumber: yearNum,
+      division: manualDivision.trim(),
+      courseLabel: label,
+      courseLegacyCode: legacyCode,
+      shiftId: manualTurno.toLowerCase(),
+      shiftName: manualTurno,
+      startDate: issueDate,
+      status: 'activa',
+      createdBy: user?.dni || 'admin',
+      createdAt: now,
+      updatedAt: now,
+    };
+    return { effectiveStudent: student, effectiveEnrollment: enrollment };
+  }, [
+    sourceMode,
+    selectedStudent,
+    studentEnrollment,
+    manualApellido,
+    manualNombre,
+    manualDni,
+    manualCurso,
+    manualDivision,
+    manualTurno,
+    yearId,
+    issueDate,
+    user?.dni,
+  ]);
+
   const previewTitle = useMemo(() => {
     if (!selectedTemplate) return 'CONSTANCIA DE ESTUDIANTE REGULAR';
     return renderTemplate(selectedTemplate.title, {
-      cicloLectivo: studentEnrollment?.academicYearId || yearId,
+      cicloLectivo: effectiveEnrollment?.academicYearId || yearId,
       cicloLectivoDestino,
     });
-  }, [selectedTemplate, studentEnrollment, yearId, cicloLectivoDestino]);
+  }, [selectedTemplate, effectiveEnrollment, yearId, cicloLectivoDestino]);
 
   const previewBody = useMemo(() => {
-    if (!selectedTemplate || !selectedStudent || !studentEnrollment) return '';
+    if (!selectedTemplate || !effectiveStudent || !effectiveEnrollment) return '';
     return renderTemplate(selectedTemplate.body, {
-      apellido: selectedStudent.apellido,
-      nombre: selectedStudent.nombres,
-      apellidoNombre: `${selectedStudent.apellido}, ${selectedStudent.nombres}`,
-      dni: formatDniDisplay(selectedStudent.dni),
-      anio: `${studentEnrollment.yearNumber}°`,
-      division: studentEnrollment.division,
-      turno: studentEnrollment.shiftName,
-      cicloLectivo: studentEnrollment.academicYearId,
+      apellido: effectiveStudent.apellido,
+      nombre: effectiveStudent.nombres,
+      apellidoNombre: `${effectiveStudent.apellido}, ${effectiveStudent.nombres}`,
+      dni: formatDniDisplay(effectiveStudent.dni),
+      anio: `${effectiveEnrollment.yearNumber}°`,
+      division: effectiveEnrollment.division,
+      turno: effectiveEnrollment.shiftName,
+      cicloLectivo: effectiveEnrollment.academicYearId,
       cicloLectivoDestino,
       fechaEmision: formatDateLongAR(issueDate),
       nombreInstitucion: settings.institutionName,
@@ -136,8 +213,8 @@ export const CertificateIssuePage: React.FC<{ defaultTypeCode?: string }> = ({
     });
   }, [
     selectedTemplate,
-    selectedStudent,
-    studentEnrollment,
+    effectiveStudent,
+    effectiveEnrollment,
     cicloLectivoDestino,
     issueDate,
     settings,
@@ -146,10 +223,25 @@ export const CertificateIssuePage: React.FC<{ defaultTypeCode?: string }> = ({
     textoPersonalizado,
   ]);
 
+  const resetForNew = () => {
+    setGeneratedCert(null);
+    setSelectedDni('');
+    setStudentSearch('');
+    setManualApellido('');
+    setManualNombre('');
+    setManualDni('');
+    setTextoPersonalizado('');
+    setObservaciones('');
+  };
+
   const handleIssue = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !selectedTemplate || !selectedStudent || !studentEnrollment) {
-      toast.error('Seleccioná un estudiante con matrícula registrada en el ciclo elegido.');
+    if (!user || !selectedTemplate || !effectiveStudent || !effectiveEnrollment) {
+      toast.error(
+        sourceMode === 'manual'
+          ? 'Completá apellido, nombre, DNI, curso, división y turno.'
+          : 'Seleccioná un estudiante con matrícula registrada en el ciclo elegido.'
+      );
       return;
     }
 
@@ -157,8 +249,8 @@ export const CertificateIssuePage: React.FC<{ defaultTypeCode?: string }> = ({
     try {
       const cert = await issueCertificate({
         template: selectedTemplate,
-        student: selectedStudent,
-        enrollment: studentEnrollment,
+        student: effectiveStudent,
+        enrollment: effectiveEnrollment,
         settings,
         issueDate,
         cicloLectivoDestino,
@@ -188,13 +280,12 @@ export const CertificateIssuePage: React.FC<{ defaultTypeCode?: string }> = ({
           type: cert.typeCode,
           issueDate: cert.issueDate,
           studentDni: cert.studentDni,
+          mode: sourceMode,
         },
       });
 
       await queryClient.invalidateQueries({ queryKey: ['certificates'] });
-      await downloadCertificatePdf(cert, settings);
-      toast.success(`Certificado ${cert.certificateNumber} emitido y descargado.`);
-      navigate(`/certificados/${cert.id}`);
+      setGeneratedCert(cert);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al emitir certificado.');
     } finally {
@@ -219,7 +310,33 @@ export const CertificateIssuePage: React.FC<{ defaultTypeCode?: string }> = ({
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         {/* Formulario */}
         <form onSubmit={handleIssue} className="xl:col-span-6 space-y-5">
-          <Card className="p-6 space-y-4">
+          <Card className="p-4 sm:p-6 space-y-4">
+            {/* Selector de origen */}
+            <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-surface-subtle border border-border-subtle">
+              <button
+                type="button"
+                onClick={() => setSourceMode('system')}
+                className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  sourceMode === 'system'
+                    ? 'bg-brand-500 text-white shadow-xs'
+                    : 'text-ink-secondary hover:text-ink-primary'
+                }`}
+              >
+                <Users size={14} /> Base del sistema
+              </button>
+              <button
+                type="button"
+                onClick={() => setSourceMode('manual')}
+                className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  sourceMode === 'manual'
+                    ? 'bg-brand-500 text-white shadow-xs'
+                    : 'text-ink-secondary hover:text-ink-primary'
+                }`}
+              >
+                <UserPen size={14} /> Carga manual
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <FieldLabel required>Tipo de certificado</FieldLabel>
@@ -243,73 +360,145 @@ export const CertificateIssuePage: React.FC<{ defaultTypeCode?: string }> = ({
               </div>
             </div>
 
-            {/* Buscador de estudiante */}
-            <div>
-              <FieldLabel required>Buscar estudiante (DNI, apellido o nombre)</FieldLabel>
-              <div className="relative">
-                <Search
-                  size={15}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted"
-                />
-                <Input
-                  value={studentSearch}
-                  onChange={(e) => setStudentSearch(e.target.value)}
-                  placeholder="Escribí DNI o apellido..."
-                  className="pl-10"
-                />
-              </div>
-              <div className="mt-2 max-h-40 overflow-y-auto border border-border-subtle rounded-xl divide-y divide-border-subtle">
-                {matchingStudents.map((s) => (
-                  <button
-                    key={s.dni}
-                    type="button"
-                    onClick={() => {
-                      setSelectedDni(s.dni);
-                      setStudentSearch(`${s.apellido}, ${s.nombres} (${s.dni})`);
-                    }}
-                    className={`w-full text-left px-3.5 py-2 text-xs flex items-center justify-between hover:bg-surface-subtle cursor-pointer ${
-                      selectedDni === s.dni ? 'bg-brand-50 dark:bg-brand-900/30 font-semibold' : ''
-                    }`}
-                  >
-                    <span>
-                      {s.apellido}, {s.nombres}
-                    </span>
-                    <span className="font-mono text-ink-muted">{formatDniDisplay(s.dni)}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Datos recuperados automáticamente */}
-            {selectedStudent && (
-              <div className="p-4 rounded-xl bg-surface-subtle border border-border-subtle text-xs space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-ink-primary">
-                    {selectedStudent.apellido}, {selectedStudent.nombres} — DNI{' '}
-                    {formatDniDisplay(selectedStudent.dni)}
-                  </span>
-                  {studentEnrollment ? (
-                    <Badge variant="success">
-                      <CheckCircle2 size={11} /> Matrícula verificada
-                    </Badge>
-                  ) : (
-                    <Badge variant="danger">
-                      <AlertTriangle size={11} /> Sin matrícula en {yearId}
-                    </Badge>
-                  )}
+            {sourceMode === 'system' ? (
+              <>
+                {/* Buscador de estudiante */}
+                <div>
+                  <FieldLabel required>Buscar estudiante (DNI, apellido o nombre)</FieldLabel>
+                  <div className="relative">
+                    <Search
+                      size={15}
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted"
+                    />
+                    <Input
+                      value={studentSearch}
+                      onChange={(e) => setStudentSearch(e.target.value)}
+                      placeholder="Escribí DNI o apellido..."
+                      className="pl-10"
+                    />
+                  </div>
+                  <div className="mt-2 max-h-40 overflow-y-auto border border-border-subtle rounded-xl divide-y divide-border-subtle">
+                    {matchingStudents.map((s) => (
+                      <button
+                        key={s.dni}
+                        type="button"
+                        onClick={() => {
+                          setSelectedDni(s.dni);
+                          setStudentSearch(`${s.apellido}, ${s.nombres} (${s.dni})`);
+                        }}
+                        className={`w-full text-left px-3.5 py-2 text-xs flex items-center justify-between hover:bg-surface-subtle cursor-pointer ${
+                          selectedDni === s.dni ? 'bg-brand-50 dark:bg-brand-900/30 font-semibold' : ''
+                        }`}
+                      >
+                        <span>
+                          {s.apellido}, {s.nombres}
+                        </span>
+                        <span className="font-mono text-ink-muted">{formatDniDisplay(s.dni)}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                {studentEnrollment ? (
-                  <p className="text-ink-secondary">
-                    Cursada recuperada: <strong>{studentEnrollment.courseLabel}</strong> · Turno{' '}
-                    <strong>{studentEnrollment.shiftName}</strong> · Ciclo{' '}
-                    <strong>{studentEnrollment.academicYearId}</strong>
-                  </p>
-                ) : (
-                  <p className="text-red-600 dark:text-red-400">
-                    El estudiante no posee matrícula en el ciclo {yearId}. Matriculalo primero en
-                    Gestión Académica → Matrícula.
-                  </p>
+
+                {/* Datos recuperados automáticamente */}
+                {selectedStudent && (
+                  <div className="p-4 rounded-xl bg-surface-subtle border border-border-subtle text-xs space-y-1.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-bold text-ink-primary">
+                        {selectedStudent.apellido}, {selectedStudent.nombres} — DNI{' '}
+                        {formatDniDisplay(selectedStudent.dni)}
+                      </span>
+                      {studentEnrollment ? (
+                        <Badge variant="success">
+                          <CheckCircle2 size={11} /> Matrícula verificada
+                        </Badge>
+                      ) : (
+                        <Badge variant="danger">
+                          <AlertTriangle size={11} /> Sin matrícula en {yearId}
+                        </Badge>
+                      )}
+                    </div>
+                    {studentEnrollment ? (
+                      <p className="text-ink-secondary">
+                        Cursada recuperada: <strong>{studentEnrollment.courseLabel}</strong> · Turno{' '}
+                        <strong>{studentEnrollment.shiftName}</strong> · Ciclo{' '}
+                        <strong>{studentEnrollment.academicYearId}</strong>
+                      </p>
+                    ) : (
+                      <p className="text-red-600 dark:text-red-400">
+                        El estudiante no posee matrícula en el ciclo {yearId}. Matriculalo primero en
+                        Gestión Académica → Matrícula.
+                      </p>
+                    )}
+                  </div>
                 )}
+              </>
+            ) : (
+              <div className="p-4 rounded-xl bg-surface-subtle/70 border border-border-subtle space-y-3.5">
+                <p className="text-xs font-semibold text-brand-700 dark:text-brand-300">
+                  Constancia personalizada (sin utilizar datos de la base del sistema)
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <FieldLabel required>Apellido</FieldLabel>
+                    <Input
+                      value={manualApellido}
+                      onChange={(e) => setManualApellido(e.target.value)}
+                      placeholder="Ej. Pérez"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel required>Nombre</FieldLabel>
+                    <Input
+                      value={manualNombre}
+                      onChange={(e) => setManualNombre(e.target.value)}
+                      placeholder="Ej. Sofía Belén"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <FieldLabel required>DNI</FieldLabel>
+                    <Input
+                      inputMode="numeric"
+                      value={manualDni}
+                      onChange={(e) => setManualDni(e.target.value)}
+                      placeholder="Sin puntos ni espacios"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel required>Turno</FieldLabel>
+                    <Select value={manualTurno} onChange={(e) => setManualTurno(e.target.value)}>
+                      <option value="Mañana">Mañana</option>
+                      <option value="Tarde">Tarde</option>
+                      <option value="Vespertino">Vespertino</option>
+                      <option value="Noche">Noche</option>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <FieldLabel required>Curso (Año)</FieldLabel>
+                    <Select value={manualCurso} onChange={(e) => setManualCurso(e.target.value)}>
+                      {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                        <option key={n} value={String(n)}>
+                          {n}° año
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div>
+                    <FieldLabel required>División</FieldLabel>
+                    <Input
+                      value={manualDivision}
+                      onChange={(e) => setManualDivision(e.target.value)}
+                      placeholder="Ej. 1ª, 2ª, 3ª"
+                      required
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
@@ -388,9 +577,9 @@ export const CertificateIssuePage: React.FC<{ defaultTypeCode?: string }> = ({
               size="lg"
               variant="emerald"
               loading={issuing}
-              disabled={!selectedStudent || !studentEnrollment}
+              disabled={!effectiveStudent || !effectiveEnrollment}
             >
-              <Download size={16} /> Confirmar emisión y generar PDF con QR
+              <FileBadge2 size={16} /> Emitir
             </Button>
           </Card>
         </form>
@@ -436,7 +625,7 @@ export const CertificateIssuePage: React.FC<{ defaultTypeCode?: string }> = ({
                 className="pointer-events-none select-none opacity-[0.07] w-56 h-56 object-contain absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
               />
 
-              {selectedTemplate && selectedStudent && studentEnrollment ? (
+              {selectedTemplate && effectiveStudent && effectiveEnrollment ? (
                 <div className="relative z-10 space-y-6">
                   <p className="text-right text-xs font-bold italic text-slate-900">
                     {settings.district}, {issueDate.split('-').reverse().join('/')}
@@ -489,6 +678,13 @@ export const CertificateIssuePage: React.FC<{ defaultTypeCode?: string }> = ({
           </div>
         </Card>
       </div>
+
+      <CertificateSuccessModal
+        certificate={generatedCert}
+        settings={settings}
+        onGenerateNew={resetForNew}
+        onClose={() => setGeneratedCert(null)}
+      />
     </div>
   );
 };

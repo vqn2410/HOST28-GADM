@@ -427,7 +427,60 @@ export const StudentsListPage: React.FC = () => {
           />
         ) : (
           <>
-            <div className="overflow-x-auto">
+            {/* Mobile: tarjetas verticales sin scroll horizontal */}
+            <div className="md:hidden divide-y divide-border-subtle">
+              {table.getRowModel().rows.map((row) => {
+                const st = row.original;
+                const age = calculateAge(st.fechaNacimiento);
+                return (
+                  <div key={st.dni} className="p-4 space-y-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <Link
+                          to={`/estudiantes/${st.dni}`}
+                          className="font-bold text-sm text-ink-primary hover:text-brand-500 block truncate"
+                        >
+                          {st.apellido}, {st.nombres}
+                        </Link>
+                        <p className="text-xs font-mono text-ink-muted">
+                          DNI {formatDniDisplay(st.dni)}
+                          {age !== null ? ` · ${age} años` : ''}
+                        </p>
+                      </div>
+                      <StudentStatusBadge status={st.estadoInstitucional} />
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-ink-secondary">
+                      <span>
+                        {st.cursoOrigen
+                          ? `${st.cursoOrigen}${st.turno ? ` · ${st.turno}` : ''}`
+                          : 'Sin curso asignado'}
+                      </span>
+                      <span>Ingreso {st.anioIngreso}</span>
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <Link to={`/estudiantes/${st.dni}`} className="flex-1">
+                        <Button size="sm" variant="outline" className="w-full">
+                          <Eye size={13} /> Ver ficha
+                        </Button>
+                      </Link>
+                      {can('certificates:issue') && (
+                        <Link
+                          to={`/certificados/alumno-regular?dni=${st.dni}`}
+                          className="flex-1"
+                        >
+                          <Button size="sm" variant="emerald" className="w-full">
+                            <FileBadge2 size={13} /> Constancia
+                          </Button>
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop: tabla */}
+            <div className="hidden md:block">
               <table className="w-full text-left border-collapse">
                 <thead>
                   {table.getHeaderGroups().map((hg) => (

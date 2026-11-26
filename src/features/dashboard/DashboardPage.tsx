@@ -305,73 +305,125 @@ export const DashboardPage: React.FC = () => {
             Todavía no se emitieron constancias en el ciclo {selectedYearId}.
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-surface-subtle text-ink-muted uppercase">
-                <tr>
-                  <th className="px-4 py-2.5">N.º Certificado</th>
-                  <th className="px-4 py-2.5">Estudiante</th>
-                  <th className="px-4 py-2.5">Tipo / Curso</th>
-                  <th className="px-4 py-2.5">Emisión</th>
-                  <th className="px-4 py-2.5">Estado</th>
-                  <th className="px-4 py-2.5 text-right">Descargar</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-subtle">
-                {certs.slice(0, 8).map((c) => (
-                  <tr key={c.id} className="hover:bg-surface-subtle/40">
-                    <td className="px-4 py-2.5 font-mono font-bold text-brand-600 dark:text-brand-300">
-                      {c.certificateNumber}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className="font-semibold text-ink-primary">
+          <>
+            {/* Mobile: tarjetas verticales sin scroll horizontal */}
+            <div className="md:hidden divide-y divide-border-subtle">
+              {certs.slice(0, 8).map((c) => (
+                <div key={c.id} className="p-4 space-y-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm text-ink-primary truncate">
                         {c.snapshot.apellidoNombre}
-                      </span>
-                      <span className="block text-[11px] font-mono text-ink-muted">
-                        DNI {formatDniDisplay(c.studentDni)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className="font-medium">{c.typeName}</span>
-                      <span className="block text-[11px] text-ink-muted">
-                        {c.snapshot.anio} {c.snapshot.division} · {c.snapshot.turno}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5">{formatDateAR(c.issueDate)}</td>
-                    <td className="px-4 py-2.5">
-                      <Badge
-                        variant={
-                          c.status === 'emitido'
-                            ? 'success'
-                            : c.status === 'anulado'
-                              ? 'danger'
-                              : 'warning'
-                        }
-                      >
-                        {c.status}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <div className="inline-flex items-center gap-1">
-                        <Button
-                          size="sm"
-                          variant="emerald"
-                          onClick={() => void downloadCertificatePdf(c, settings)}
-                        >
-                          <Download size={13} /> PDF
-                        </Button>
-                        <Link to={`/certificados/${c.id}`}>
-                          <Button size="sm" variant="ghost" title="Ver detalle">
-                            <Eye size={14} />
-                          </Button>
-                        </Link>
-                      </div>
-                    </td>
+                      </p>
+                      <p className="text-xs font-mono text-brand-600 dark:text-brand-300">
+                        {c.certificateNumber} · DNI {formatDniDisplay(c.studentDni)}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={
+                        c.status === 'emitido'
+                          ? 'success'
+                          : c.status === 'anulado'
+                            ? 'danger'
+                            : 'warning'
+                      }
+                    >
+                      {c.status}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-ink-secondary">
+                    <span className="truncate">
+                      {c.typeName} · {c.snapshot.anio} {c.snapshot.division} ({c.snapshot.turno})
+                    </span>
+                    <span className="shrink-0 ml-2">{formatDateAR(c.issueDate)}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      variant="emerald"
+                      onClick={() => void downloadCertificatePdf(c, settings)}
+                    >
+                      <Download size={13} /> Descargar PDF
+                    </Button>
+                    <Link to={`/certificados/${c.id}`}>
+                      <Button size="sm" variant="outline" className="w-full">
+                        <Eye size={13} /> Ver detalle
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop: tabla */}
+            <div className="hidden md:block">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-surface-subtle text-ink-muted uppercase">
+                  <tr>
+                    <th className="px-4 py-2.5">N.º Certificado</th>
+                    <th className="px-4 py-2.5">Estudiante</th>
+                    <th className="px-4 py-2.5">Tipo / Curso</th>
+                    <th className="px-4 py-2.5">Emisión</th>
+                    <th className="px-4 py-2.5">Estado</th>
+                    <th className="px-4 py-2.5 text-right">Descargar</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-border-subtle">
+                  {certs.slice(0, 8).map((c) => (
+                    <tr key={c.id} className="hover:bg-surface-subtle/40">
+                      <td className="px-4 py-2.5 font-mono font-bold text-brand-600 dark:text-brand-300">
+                        {c.certificateNumber}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className="font-semibold text-ink-primary">
+                          {c.snapshot.apellidoNombre}
+                        </span>
+                        <span className="block text-[11px] font-mono text-ink-muted">
+                          DNI {formatDniDisplay(c.studentDni)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className="font-medium">{c.typeName}</span>
+                        <span className="block text-[11px] text-ink-muted">
+                          {c.snapshot.anio} {c.snapshot.division} · {c.snapshot.turno}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5">{formatDateAR(c.issueDate)}</td>
+                      <td className="px-4 py-2.5">
+                        <Badge
+                          variant={
+                            c.status === 'emitido'
+                              ? 'success'
+                              : c.status === 'anulado'
+                                ? 'danger'
+                                : 'warning'
+                          }
+                        >
+                          {c.status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <div className="inline-flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="emerald"
+                            onClick={() => void downloadCertificatePdf(c, settings)}
+                          >
+                            <Download size={13} /> PDF
+                          </Button>
+                          <Link to={`/certificados/${c.id}`}>
+                            <Button size="sm" variant="ghost" title="Ver detalle">
+                              <Eye size={14} />
+                            </Button>
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </Card>
 

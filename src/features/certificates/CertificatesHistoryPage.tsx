@@ -175,8 +175,71 @@ export const CertificatesHistoryPage: React.FC = () => {
             }
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm border-collapse">
+          <>
+            {/* Mobile: tarjetas verticales sin scroll horizontal */}
+            <div className="md:hidden divide-y divide-border-subtle">
+              {filtered.map((c) => (
+                <div key={c.id} className="p-4 space-y-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm text-ink-primary truncate">
+                        {c.snapshot.apellidoNombre}
+                      </p>
+                      <p className="text-xs font-mono text-brand-600 dark:text-brand-300">
+                        {c.certificateNumber} · DNI {formatDniDisplay(c.studentDni)}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={
+                        c.status === 'emitido'
+                          ? 'success'
+                          : c.status === 'anulado'
+                            ? 'danger'
+                            : 'warning'
+                      }
+                    >
+                      {c.status}
+                    </Badge>
+                  </div>
+                  <div className="text-xs text-ink-secondary space-y-0.5">
+                    <p className="font-medium text-ink-primary">{c.typeName}</p>
+                    <p>
+                      {c.snapshot.anio} {c.snapshot.division} · {c.snapshot.turno} (
+                      {c.snapshot.cicloLectivo}) · Emisión {formatDateAR(c.issueDate)}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      variant="emerald"
+                      className="flex-1"
+                      onClick={() => void downloadCertificatePdf(c, settings)}
+                    >
+                      <Download size={13} /> PDF
+                    </Button>
+                    <Link to={`/certificados/${c.id}`} className="flex-1">
+                      <Button size="sm" variant="outline" className="w-full">
+                        <Eye size={13} /> Detalle
+                      </Button>
+                    </Link>
+                    {can('certificates:cancel') && c.status === 'emitido' && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        title="Anular"
+                        onClick={() => setCancelTarget(c)}
+                      >
+                        <Ban size={14} className="text-red-500" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop: tabla */}
+            <div className="hidden md:block">
+              <table className="w-full text-left text-sm border-collapse">
               <thead className="bg-surface-subtle/70 text-xs uppercase text-ink-muted border-b border-border-subtle">
                 <tr>
                   <th className="px-4 py-3">N.º Certificado</th>
@@ -254,7 +317,8 @@ export const CertificatesHistoryPage: React.FC = () => {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </Card>
 
