@@ -114,7 +114,9 @@ export async function upsertSgaeUser(input: {
     nombre: input.nombre.trim(),
     correo: input.correo.trim(),
     roleId: input.roleId,
-    customPermissions: input.customPermissions,
+    ...(input.customPermissions && input.customPermissions.length > 0
+      ? { customPermissions: input.customPermissions }
+      : {}),
     active: input.active,
     createdAt: existing.exists() ? (existing.data().createdAt as string) : now,
     updatedAt: now,

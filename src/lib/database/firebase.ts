@@ -1,5 +1,5 @@
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
-import { getFirestore, type Firestore } from 'firebase/firestore';
+import { initializeFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
 const firebaseConfig = {
@@ -21,7 +21,7 @@ let storage: FirebaseStorage | null = null;
 
 if (isFirebaseConfigured) {
   app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
-  db = getFirestore(app);
+  db = initializeFirestore(app, { ignoreUndefinedProperties: true });
   storage = getStorage(app);
 }
 
