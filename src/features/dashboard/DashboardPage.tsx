@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -26,6 +26,7 @@ import {
   UserMinus,
   Download,
   Eye,
+  CalendarCheck,
 } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
 import { useAcademicYear } from '@/providers/AcademicYearProvider';
@@ -35,6 +36,7 @@ import { listCertificates } from '@/repositories/certificateRepository';
 import { downloadCertificatePdf } from '@/templates/pdf/certificatePdfGenerator';
 import { formatDateAR, formatDniDisplay, getArgentinaDateISO } from '@/lib/utils/formatters';
 import { Badge, Button, Card, StatCard } from '@/components/ui/Primitives';
+import { AttendanceTab } from '@/features/grades/components/AttendanceTab';
 
 const PIE_COLORS = ['#2f5499', '#00a059', '#fcd055', '#64748b'];
 
@@ -65,6 +67,30 @@ export const DashboardPage: React.FC = () => {
   const enrollments = enrollmentsQuery.data ?? [];
   const certs = certsQuery.data ?? [];
   const movements = movementsQuery.data ?? [];
+
+  const activeCourses = useMemo(
+    () => courses.filter((c) => c.status === 'activo'),
+    [courses]
+  );
+  const [selectedAttendanceCourseId, setSelectedAttendanceCourseId] = useState('');
+
+  useEffect(() => {
+    if (!selectedAttendanceCourseId && activeCourses.length > 0) {
+      setSelectedAttendanceCourseId(activeCourses[0].id);
+    }
+  }, [activeCourses, selectedAttendanceCourseId]);
+
+  const attendanceRosterStudents = useMemo(() => {
+    if (!selectedAttendanceCourseId) return [];
+    const activeDnis = new Set(
+      enrollments
+        .filter((e) => e.status === 'activa' && e.courseId === selectedAttendanceCourseId)
+        .map((e) => e.studentDni)
+    );
+    return students
+      .filter((s) => activeDnis.has(s.dni))
+      .sort((a, b) => a.apellido.localeCompare(b.apellido, 'es'));
+  }, [enrollments, students, selectedAttendanceCourseId]);
 
   const stats = useMemo(() => {
     const activeEnrollments = enrollments.filter((e) => e.status === 'activa');
@@ -161,6 +187,11 @@ export const DashboardPage: React.FC = () => {
                 </Button>
               </Link>
             )}
+            <Link to="/asistencia">
+              <Button size="sm" variant="emerald">
+                <CalendarCheck size={14} /> Asistencia
+              </Button>
+            </Link>
             {can('certificates:issue') && (
               <Link to="/certificados/alumno-regular">
                 <Button size="sm" variant="emerald">
@@ -219,6 +250,40 @@ export const DashboardPage: React.FC = () => {
           accent="slate"
         />
       </div>
+
+      {/* Asistencia de Preceptoría (L–V) integrada en el Dashboard principal */}
+      {user?.roleId !== 'docente' && (
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="font-display font-bold text-base text-ink-primary flex items-center gap-2">
+                <CalendarCheck size={18} className="text-emerald-brand-600" />
+                Asistencia de Preceptoría (Lunes a Viernes)
+              </h2>
+              <p className="text-xs text-ink-muted">
+                Toma diaria, planilla mensual con asistencia de Educación Física (HOST28_EF) en los
+                días correspondientes, días no contabilizados y alertas &lt; 75%.
+              </p>
+            </div>
+            <Link
+              to="/asistencia"
+              className="text-xs font-semibold text-brand-500 hover:underline inline-flex items-center gap-1"
+            >
+              Abrir en pantalla completa <ArrowRight size={13} />
+            </Link>
+          </div>
+          <AttendanceTab
+            user={user}
+            isTeacherOnly={false}
+            preceptoriaOnly
+            academicYearId={selectedYearId}
+            courses={activeCourses}
+            selectedCourseId={selectedAttendanceCourseId}
+            onSelectCourse={setSelectedAttendanceCourseId}
+            rosterStudents={attendanceRosterStudents}
+          />
+        </section>
+      )}
 
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

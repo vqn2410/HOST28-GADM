@@ -17,6 +17,8 @@ import {
   computeAttendanceStats,
   deleteNonComputableDay,
   getDayOfWeekISO,
+  getWeekdaysInMonth,
+  getWeekdaysInWeek,
   isWeekday,
   listDailyAttendance,
   listEfPartesForYear,
@@ -52,15 +54,16 @@ import type {
 interface AttendanceTabProps {
   user: SgaeUser | null;
   isTeacherOnly: boolean;
+  preceptoriaOnly?: boolean;
   academicYearId: string;
   courses: Course[];
   selectedCourseId: string;
   onSelectCourse: (id: string) => void;
-  courseSubjects: Subject[];
-  selectedSubjectId: string;
-  onSelectSubject: (id: string) => void;
+  courseSubjects?: Subject[];
+  selectedSubjectId?: string;
+  onSelectSubject?: (id: string) => void;
   rosterStudents: Student[];
-  assignments: TeacherAssignment[];
+  assignments?: TeacherAssignment[];
 }
 
 type PeriodView = 'semanal' | 'mensual' | 'anual';
@@ -82,20 +85,21 @@ function getWeekBounds(isoDate: string): { start: string; end: string } {
 export const AttendanceTab: React.FC<AttendanceTabProps> = ({
   user,
   isTeacherOnly,
+  preceptoriaOnly = false,
   academicYearId,
   courses,
   selectedCourseId,
   onSelectCourse,
-  courseSubjects,
-  selectedSubjectId,
-  onSelectSubject,
+  courseSubjects = [],
+  selectedSubjectId = '',
+  onSelectSubject = () => undefined,
   rosterStudents,
-  assignments,
+  assignments = [],
 }) => {
   const queryClient = useQueryClient();
 
   const [mode, setMode] = useState<'materia' | 'preceptoria'>(
-    isTeacherOnly ? 'materia' : 'preceptoria'
+    preceptoriaOnly ? 'preceptoria' : isTeacherOnly ? 'materia' : 'preceptoria'
   );
   const [selectedDate, setSelectedDate] = useState(getArgentinaDateISO());
   const [periodView, setPeriodView] = useState<PeriodView>('mensual');
@@ -220,6 +224,36 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
     [rosterStudents, statsMap]
   );
 
+  // Mapas por fecha para la planilla mensual / semanal (incluyendo EF en los días que corresponda)
+  const efByDateMap = useMemo(() => {
+    const map = new Map<string, Record<string, AttendanceMark>>();
+    efCourseRecords.forEach((rec) => {
+      const prev = map.get(rec.date) ?? {};
+      map.set(rec.date, { ...prev, ...rec.marks });
+    });
+    return map;
+  }, [efCourseRecords]);
+
+  const activeByDateMap = useMemo(() => {
+    const map = new Map<string, Record<string, AttendanceMark>>();
+    activeRecords.forEach((rec) => {
+      map.set(rec.date, rec.marks);
+    });
+    return map;
+  }, [activeRecords]);
+
+  const nonCompByDateMap = useMemo(() => {
+    const map = new Map<string, (typeof applicableNonComp)[number]>();
+    applicableNonComp.forEach((d) => map.set(d.date, d));
+    return map;
+  }, [applicableNonComp]);
+
+  const gridDays = useMemo(() => {
+    if (periodView === 'mensual') return getWeekdaysInMonth(selectedDate.slice(0, 7));
+    if (periodView === 'semanal') return getWeekdaysInWeek(selectedDate);
+    return [];
+  }, [periodView, selectedDate]);
+
   // Marcas actuales para la fecha seleccionada
   const existingMarksForDate = useMemo(() => {
     const found = activeRecords.find((r) => r.date === selectedDate);
@@ -339,7 +373,11 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
       {/* Selector de modo y filtros */}
       <Card className="p-4 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          {!isTeacherOnly ? (
+          {preceptoriaOnly ? (
+            <Badge variant="brand">
+              Asistencia de Preceptoría (L–V) · Con Educación Física (HOST28_EF)
+            </Badge>
+          ) : !isTeacherOnly ? (
             <div className="inline-flex p-1 rounded-xl bg-surface-subtle border border-border-subtle gap-1">
               <button
                 type="button"
@@ -566,6 +604,199 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
         </Card>
       </div>
 
+      {/* Planilla Mensual / Semanal día por día (con Educación Física en los días que corresponda) */}
+      {(periodView === 'mensual' || periodView === 'semanal') &&
+        displayedStudents.length > 0 &&
+        gridDays.length > 0 && (
+          <Card className="overflow-hidden">
+            <div className="p-4 border-b border-border-subtle flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="font-bold text-sm flex items-center gap-2">
+                  <CalendarCheck size={16} className="text-emerald-brand-600" />
+                  Planilla {periodView === 'mensual' ? 'Mensual' : 'Semanal'} —{' '}
+                  {currentCourse?.label || ''} ({selectedDate.slice(0, 7)})
+                </h3>
+                <p className="text-[11px] text-ink-muted mt-0.5">
+                  Hacé clic en cualquier día para cargar o editar asistencia.{' '}
+                  {mode === 'preceptoria' &&
+                    'Los días con clase de Educación Física (HOST28_EF) muestran automáticamente la marca EF debajo de la asistencia diaria.'}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-semibold">
+                  <Dumbbell size={11} /> EF = Ed. Física (HOST28_EF)
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 font-semibold">
+                  NC = No contabilizado
+                </span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px] border-collapse">
+                <thead>
+                  <tr className="bg-surface-subtle text-ink-muted border-b border-border-subtle">
+                    <th className="sticky left-0 z-10 bg-surface-subtle px-3 py-2 text-left font-bold min-w-[180px] border-r border-border-subtle">
+                      Estudiante
+                    </th>
+                    {gridDays.map((d) => {
+                      const isSel = d.date === selectedDate;
+                      const nc = nonCompByDateMap.get(d.date);
+                      const hasEf = mode === 'preceptoria' && efByDateMap.has(d.date);
+                      const dayShort =
+                        WEEKDAYS.find((w) => w.value === d.dow)?.short.slice(0, 2) ?? '';
+                      return (
+                        <th
+                          key={d.date}
+                          onClick={() => {
+                            setSelectedDate(d.date);
+                            setDraftMarks({});
+                          }}
+                          title={
+                            nc
+                              ? `${formatDateAR(d.date)} — No contabilizado: ${nc.cause}`
+                              : hasEf
+                                ? `${formatDateAR(d.date)} — Incluye parte de Educación Física (HOST28_EF)`
+                                : formatDateAR(d.date)
+                          }
+                          className={`px-1 py-1.5 text-center font-semibold cursor-pointer min-w-[38px] border-r border-border-subtle/50 transition-colors ${
+                            isSel
+                              ? 'bg-brand-500 text-white'
+                              : nc
+                                ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300'
+                                : 'hover:bg-brand-50 dark:hover:bg-brand-950/30'
+                          }`}
+                        >
+                          <div className="text-[9px] uppercase opacity-75">{dayShort}</div>
+                          <div className="font-mono font-bold leading-tight">{d.day}</div>
+                          {hasEf && (
+                            <div
+                              className={`text-[8px] font-extrabold rounded px-0.5 mt-0.5 ${
+                                isSel
+                                  ? 'bg-white/25 text-white'
+                                  : 'bg-emerald-brand-500 text-white'
+                              }`}
+                            >
+                              EF
+                            </div>
+                          )}
+                        </th>
+                      );
+                    })}
+                    <th className="px-2.5 py-2 text-center font-bold border-l border-border-subtle min-w-[58px]">
+                      % Gral
+                    </th>
+                    {mode === 'preceptoria' && (
+                      <th className="px-2.5 py-2 text-center font-bold border-l border-border-subtle min-w-[58px] text-emerald-brand-700 dark:text-emerald-300">
+                        % EF
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-subtle">
+                  {displayedStudents.map((st) => {
+                    const stat = statsMap.get(st.dni);
+                    const efStat = efStatsMap.get(st.dni);
+                    return (
+                      <tr
+                        key={st.dni}
+                        className={
+                          stat?.below75
+                            ? 'bg-red-50/50 dark:bg-red-950/15 hover:bg-red-50/80'
+                            : 'hover:bg-surface-subtle/40'
+                        }
+                      >
+                        <td className="sticky left-0 z-10 bg-surface-card px-3 py-1.5 font-semibold text-ink-primary border-r border-border-subtle truncate max-w-[200px]">
+                          {st.apellido}, {st.nombres}
+                        </td>
+                        {gridDays.map((d) => {
+                          const nc = nonCompByDateMap.get(d.date);
+                          const dailyMark = activeByDateMap.get(d.date)?.[st.dni];
+                          const efMark =
+                            mode === 'preceptoria'
+                              ? efByDateMap.get(d.date)?.[st.dni]
+                              : undefined;
+                          const markClass = (m?: AttendanceMark) =>
+                            m === 'P'
+                              ? 'text-emerald-700 dark:text-emerald-300 font-bold'
+                              : m === 'A'
+                                ? 'text-red-600 dark:text-red-400 font-extrabold'
+                                : m === 'T'
+                                  ? 'text-amber-600 dark:text-amber-400 font-bold'
+                                  : m === 'J'
+                                    ? 'text-brand-600 dark:text-brand-300 font-bold'
+                                    : 'text-ink-muted/40';
+                          const efPillClass = (m: AttendanceMark) =>
+                            m === 'P'
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300'
+                              : m === 'A'
+                                ? 'bg-red-100 text-red-700 dark:bg-red-950/70 dark:text-red-300'
+                                : m === 'T'
+                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300'
+                                  : 'bg-blue-100 text-blue-800 dark:bg-blue-950/70 dark:text-blue-300';
+                          return (
+                            <td
+                              key={d.date}
+                              className={`px-1 py-1 text-center border-r border-border-subtle/40 align-middle ${
+                                d.date === selectedDate
+                                  ? 'bg-brand-50/70 dark:bg-brand-950/30'
+                                  : nc
+                                    ? 'bg-blue-50/50 dark:bg-blue-950/25'
+                                    : ''
+                              }`}
+                            >
+                              {nc ? (
+                                <span
+                                  title={`No contabilizado: ${nc.cause}`}
+                                  className="text-[9px] font-bold text-blue-600 dark:text-blue-300"
+                                >
+                                  NC
+                                </span>
+                              ) : (
+                                <div className="flex flex-col items-center justify-center leading-none gap-0.5">
+                                  <span className={markClass(dailyMark)}>{dailyMark ?? '·'}</span>
+                                  {efMark && (
+                                    <span
+                                      title={`Educación Física (${formatDateAR(d.date)}): ${efMark}`}
+                                      className={`text-[8px] px-1 py-0.5 rounded font-bold leading-none ${efPillClass(efMark)}`}
+                                    >
+                                      EF:{efMark}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="px-2 py-1.5 text-center font-mono font-bold border-l border-border-subtle">
+                          <span className={stat?.below75 ? 'text-red-600' : 'text-emerald-brand-600'}>
+                            {stat?.percentage ?? 100}%
+                          </span>
+                        </td>
+                        {mode === 'preceptoria' && (
+                          <td className="px-2 py-1.5 text-center font-mono font-bold border-l border-border-subtle">
+                            {efStat && efStat.totalClasses > 0 ? (
+                              <span
+                                className={
+                                  efStat.below75 ? 'text-amber-600' : 'text-emerald-brand-600'
+                                }
+                              >
+                                {efStat.percentage}%
+                              </span>
+                            ) : (
+                              <span className="text-ink-muted">—</span>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+
       {/* Planilla de toma de asistencia + porcentajes */}
       <Card className="overflow-hidden">
         <div className="p-4 border-b border-border-subtle flex flex-wrap items-center justify-between gap-2">
@@ -620,6 +851,19 @@ export const AttendanceTab: React.FC<AttendanceTabProps> = ({
                       {mode === 'preceptoria' && efStat && efStat.totalClasses > 0 && (
                         <Badge variant={efStat.below75 ? 'warning' : 'neutral'}>
                           EF: {efStat.percentage}% ({efStat.totalClasses} cl.)
+                        </Badge>
+                      )}
+                      {mode === 'preceptoria' && efByDateMap.get(selectedDate)?.[st.dni] && (
+                        <Badge
+                          variant={
+                            efByDateMap.get(selectedDate)?.[st.dni] === 'A'
+                              ? 'danger'
+                              : efByDateMap.get(selectedDate)?.[st.dni] === 'T'
+                                ? 'warning'
+                                : 'success'
+                          }
+                        >
+                          EF hoy: {efByDateMap.get(selectedDate)?.[st.dni]}
                         </Badge>
                       )}
                     </div>

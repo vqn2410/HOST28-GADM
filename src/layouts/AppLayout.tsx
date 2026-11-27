@@ -17,6 +17,7 @@ import {
   Menu,
   X,
   CalendarDays,
+  CalendarCheck,
   ShieldCheck,
   QrCode,
   BookOpenCheck,
@@ -47,6 +48,7 @@ interface NavGroup {
 
 const BREADCRUMB_LABELS: Record<string, string> = {
   dashboard: 'Inicio',
+  asistencia: 'Asistencia de Preceptoría',
   estudiantes: 'Estudiantes',
   nuevo: 'Nuevo',
   importar: 'Importación masiva',
@@ -97,6 +99,12 @@ export const AppLayout: React.FC = () => {
         label: 'Inicio',
         icon: <LayoutDashboard size={18} />,
         to: '/dashboard',
+      },
+      {
+        id: 'asistencia',
+        label: 'Asistencia (Preceptoría)',
+        icon: <CalendarCheck size={18} />,
+        to: '/asistencia',
       },
       {
         id: 'estudiantes',

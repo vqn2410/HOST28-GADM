@@ -110,6 +110,11 @@ const CalificacionesAppPage = lazy(() =>
     default: m.CalificacionesAppPage,
   }))
 );
+const PreceptorAttendancePage = lazy(() =>
+  import('@/features/attendance/PreceptorAttendancePage').then((m) => ({
+    default: m.PreceptorAttendancePage,
+  }))
+);
 
 const PageFallback = () => (
   <div className="p-6 space-y-4">
@@ -150,6 +155,7 @@ export const App: React.FC = () => {
           >
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/asistencia" element={<PreceptorAttendancePage />} />
 
             {/* Estudiantes */}
             <Route

@@ -55,6 +55,58 @@ export function isWeekday(dateStr: string): boolean {
   return dow >= 1 && dow <= 5;
 }
 
+/** Devuelve todos los días hábiles (Lunes a Viernes) de un mes YYYY-MM. */
+export function getWeekdaysInMonth(yearMonth: string): { date: string; day: number; dow: number }[] {
+  const m = /^(\d{4})-(\d{2})$/.exec(yearMonth.trim());
+  if (!m) return [];
+  const year = Number(m[1]);
+  const month = Number(m[2]); // 1..12
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const result: { date: string; day: number; dow: number }[] = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dt = new Date(year, month - 1, d);
+    const dow = dt.getDay();
+    if (dow >= 1 && dow <= 5) {
+      result.push({
+        date: `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
+        day: d,
+        dow,
+      });
+    }
+  }
+  return result;
+}
+
+/** Devuelve los 5 días hábiles (Lun–Vie) de la semana que contiene `isoDate`. */
+export function getWeekdaysInWeek(isoDate: string): { date: string; day: number; dow: number }[] {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate.trim());
+  if (!m) return [];
+  const dt = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const dow = dt.getDay();
+  const diffToMon = dow === 0 ? -6 : 1 - dow;
+  const mon = new Date(dt);
+  mon.setDate(dt.getDate() + diffToMon);
+  const result: { date: string; day: number; dow: number }[] = [];
+  for (let i = 0; i < 5; i++) {
+    const cur = new Date(mon);
+    cur.setDate(mon.getDate() + i);
+    result.push({
+      date: `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`,
+      day: cur.getDate(),
+      dow: cur.getDay(),
+    });
+  }
+  return result;
+}
+
+/** Normaliza códigos de curso ("1° 1°", "1º 1ª", "1°1°") a clave comparable "1-1". */
+export function normalizeCourseKey(code?: string): string {
+  if (!code) return '';
+  const nums = code.match(/\d+/g);
+  if (nums && nums.length >= 2) return `${nums[0]}-${nums[1]}`;
+  return code.replace(/[\s°ºª]/g, '').toLowerCase();
+}
+
 export interface StudentAttendanceStat {
   dni: string;
   totalClasses: number;
@@ -126,10 +178,11 @@ export function adaptEfPartesToAttendanceRecords(
   partes: EfParteRecord[],
   courseLegacyCode?: string
 ): { date: string; marks: Record<string, AttendanceMark>; curso: string }[] {
+  const targetCourseKey = normalizeCourseKey(courseLegacyCode);
   return partes
     .filter((p) => {
       if (p.huboClase && p.huboClase !== 'Sí') return false;
-      if (courseLegacyCode && p.curso !== courseLegacyCode) return false;
+      if (targetCourseKey && normalizeCourseKey(p.curso) !== targetCourseKey) return false;
       return Boolean(p.fecha && p.asistencia);
     })
     .map((p) => {
