@@ -585,7 +585,9 @@ export const CertificateIssuePage: React.FC<{ defaultTypeCode?: string }> = ({
                   </p>
                   <p className="text-xs font-medium text-slate-800">GUSTAVO CERATI</p>
                   <p className="text-[10px] text-slate-600 leading-tight mt-0.5">
-                    Provincia de {settings.province}.<br />
+                    Provincia de {settings.province} · CUE:{' '}
+                    {!settings.cue || settings.cue === '0600028-00' ? '0617791-00' : settings.cue}
+                    <br />
                     Dirección General de Cultura y Educación.<br />
                     Dirección Provincial de Educación Secundaria.
                   </p>

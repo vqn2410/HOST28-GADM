@@ -59,6 +59,7 @@ async function renderCertificateOnPage(
       ? 'Ituzaingó 1762 – Lanús Este'
       : s.direccion;
   const phoneToPrint = s.telefono || '4225-2086';
+  const cueToPrint = !s.cue || s.cue === '0600028-00' ? '0617791-00' : s.cue;
 
   const logoData = await loadLogoDataUrl(settings?.logoUrl || '/logo.png');
 
@@ -126,7 +127,7 @@ async function renderCertificateOnPage(
 
   pdf.setFontSize(8.2);
   pdf.setTextColor(71, 85, 105);
-  pdf.text(`Provincia de ${s.provincia || 'Buenos Aires'}.`, rightX, frameY + 18.2);
+  pdf.text(`Provincia de ${s.provincia || 'Buenos Aires'}  •  CUE: ${cueToPrint}`, rightX, frameY + 18.2);
   pdf.text('Dirección General de Cultura y Educación.', rightX, frameY + 22);
   pdf.text('Dirección Provincial de Educación Secundaria.', rightX, frameY + 25.8);
 

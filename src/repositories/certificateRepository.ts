@@ -150,6 +150,9 @@ export function buildCertificateSnapshot(
   validationUrl: string
 ): CertificateSnapshot {
   const apellidoNombre = `${input.student.apellido}, ${input.student.nombres}`;
+  const cue = !input.settings.cue || input.settings.cue === '0600028-00'
+    ? '0617791-00'
+    : input.settings.cue;
   const vars: Record<string, string> = {
     apellido: input.student.apellido,
     nombre: input.student.nombres,
@@ -167,8 +170,8 @@ export function buildCertificateSnapshot(
     numeroEscuela: input.settings.schoolNumber,
     distrito: input.settings.district,
     provincia: input.settings.province,
-    cue: input.settings.cue,
-    destinatario: input.destinatario || 'ante quien corresponda',
+    cue,
+    destinatario: input.destinatario?.trim() || '',
     motivo: input.motivo || '',
     textoPersonalizado: input.textoPersonalizado || '',
     numeroCertificado: certificateNumber,

@@ -8,7 +8,6 @@ import {
   AlertTriangle,
   FileBadge2,
   QrCode,
-  UserCheck,
   UserPen,
   Users,
   Printer,
@@ -61,9 +60,6 @@ export const QuickPreceptoraIssuePage: React.FC = () => {
   const queryClient = useQueryClient();
 
   const [sourceMode, setSourceMode] = useState<'system' | 'manual'>('system');
-  const [preceptoraName, setPreceptoraName] = useState(
-    () => localStorage.getItem('sgae_preceptora_name') || ''
-  );
   const [typeCode, setTypeCode] = useState('alumno_regular');
   const [cicloLectivoDestino, setCicloLectivoDestino] = useState(() =>
     String((Number(selectedYearId) || new Date().getFullYear()) + 1)
@@ -78,7 +74,7 @@ export const QuickPreceptoraIssuePage: React.FC = () => {
   const [manualCourseKey, setManualCourseKey] = useState<string>(MANUAL_COURSE_OPTIONS[0].id);
 
   const [issueDate, setIssueDate] = useState(getArgentinaDateISO());
-  const [destinatario, setDestinatario] = useState('ante quien corresponda');
+  const [destinatario, setDestinatario] = useState('');
   const [textoPersonalizado, setTextoPersonalizado] = useState('');
   const [observaciones, setObservaciones] = useState('');
   const [issuing, setIssuing] = useState(false);
@@ -219,8 +215,8 @@ export const QuickPreceptoraIssuePage: React.FC = () => {
       numeroEscuela: settings.schoolNumber,
       distrito: settings.district,
       provincia: settings.province,
-      cue: settings.cue,
-      destinatario: destinatario || 'ante quien corresponda',
+      cue: !settings.cue || settings.cue === '0600028-00' ? '0617791-00' : settings.cue,
+      destinatario: destinatario.trim(),
       motivo: '',
       textoPersonalizado,
     });
@@ -257,12 +253,7 @@ export const QuickPreceptoraIssuePage: React.FC = () => {
       return;
     }
 
-    const issuerLabel = preceptoraName.trim()
-      ? `Preceptoría (${preceptoraName.trim()})`
-      : 'Preceptoría (Emisión rápida)';
-    if (preceptoraName.trim()) {
-      localStorage.setItem('sgae_preceptora_name', preceptoraName.trim());
-    }
+    const issuerLabel = 'Preceptoría (Emisión rápida)';
 
     setIssuing(true);
     try {
@@ -379,32 +370,15 @@ export const QuickPreceptoraIssuePage: React.FC = () => {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <FieldLabel>Preceptora / Responsable (opcional)</FieldLabel>
-                  <div className="relative">
-                    <UserCheck
-                      size={15}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
-                    />
-                    <Input
-                      value={preceptoraName}
-                      onChange={(e) => setPreceptoraName(e.target.value)}
-                      placeholder="Tu nombre y apellido"
-                      className="pl-9"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <FieldLabel required>Tipo de constancia</FieldLabel>
-                  <Select value={typeCode} onChange={(e) => setTypeCode(e.target.value)}>
-                    {activeTemplates.map((t) => (
-                      <option key={t.id} value={t.code}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
+              <div>
+                <FieldLabel required>Tipo de constancia</FieldLabel>
+                <Select value={typeCode} onChange={(e) => setTypeCode(e.target.value)}>
+                  {activeTemplates.map((t) => (
+                    <option key={t.id} value={t.code}>
+                      {t.name}
+                    </option>
+                  ))}
+                </Select>
               </div>
 
               {sourceMode === 'system' ? (
@@ -546,7 +520,7 @@ export const QuickPreceptoraIssuePage: React.FC = () => {
                   <Input
                     value={destinatario}
                     onChange={(e) => setDestinatario(e.target.value)}
-                    placeholder="Ej. ANSES / ATE / quien corresponda"
+                    placeholder="Ej. ANSES / ATE / Obra Social"
                   />
                 </div>
               </div>
@@ -620,7 +594,9 @@ export const QuickPreceptoraIssuePage: React.FC = () => {
                       GUSTAVO CERATI
                     </p>
                     <p className="text-[9px] sm:text-[10px] text-slate-600 leading-tight mt-0.5">
-                      Provincia de {settings.province}.<br />
+                      Provincia de {settings.province} · CUE:{' '}
+                      {!settings.cue || settings.cue === '0600028-00' ? '0617791-00' : settings.cue}
+                      <br />
                       Dirección General de Cultura y Educación.<br />
                       Dirección Provincial de Educación Secundaria.
                     </p>
