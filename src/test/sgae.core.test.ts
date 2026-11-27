@@ -26,6 +26,11 @@ import {
   evaluateStudentTrajectoryRes1650,
 } from '@/repositories/gradesRepository';
 import {
+  adaptEfPartesToAttendanceRecords,
+  classifyStudentsByRisk,
+  computeAttendanceStats,
+} from '@/repositories/attendanceRepository';
+import {
   buildDefaultCoursesForYear,
   DEFAULT_CERTIFICATE_TEMPLATES,
   DEFAULT_SCHOOL_SETTINGS,
@@ -367,5 +372,68 @@ describe('SGAE — Motor Académico Resolución 1650/24 PBA', () => {
     const traj = evaluateStudentTrajectoryRes1650(fivePending);
     expect(traj.requiresEDTE).toBe(true);
     expect(traj.totalPendientesOIntensif).toBe(5);
+  });
+
+  it('calcula asistencia excluyendo días no contabilizados (ej. jornada institucional) y detecta <75%', () => {
+    const records = [
+      { date: '2026-05-04', marks: { '10001': 'P' as const, '10002': 'A' as const } },
+      { date: '2026-05-05', marks: { '10001': 'P' as const, '10002': 'A' as const } },
+      { date: '2026-05-06', marks: { '10001': 'P' as const, '10002': 'P' as const } },
+      // Jornada Institucional: debe excluirse del denominador
+      { date: '2026-05-07', marks: { '10001': 'A' as const, '10002': 'A' as const } },
+    ];
+    const nonComp = new Set(['2026-05-07']);
+    const stats = computeAttendanceStats(['10001', '10002'], records, nonComp);
+
+    expect(stats.get('10001')?.totalClasses).toBe(3);
+    expect(stats.get('10001')?.percentage).toBe(100);
+    expect(stats.get('10001')?.below75).toBe(false);
+
+    expect(stats.get('10002')?.totalClasses).toBe(3);
+    expect(stats.get('10002')?.percentage).toBe(33.3);
+    expect(stats.get('10002')?.below75).toBe(true);
+  });
+
+  it('adapta partes reales de HOST28_EF y clasifica estudiantes en 0, 1-2, 3-4 y 5+ materias con TEP/TED/1-6', () => {
+    const efRecords = adaptEfPartesToAttendanceRecords(
+      [
+        {
+          id: 'p1',
+          fecha: '2026-05-11',
+          curso: '1°1°',
+          huboClase: 'Sí',
+          asistencia: { '10001': 'Presente', '10002': 'Ausente' },
+        },
+      ],
+      '1°1°'
+    );
+    expect(efRecords).toHaveLength(1);
+    expect(efRecords[0].marks['10001']).toBe('P');
+    expect(efRecords[0].marks['10002']).toBe('A');
+
+    const students: Student[] = [
+      { id: '1', dni: '10001', apellido: 'A', nombres: 'Uno', nombre: 'A, Uno', anioIngreso: 2026, estadoInstitucional: 'activo', createdAt: '', updatedAt: '' },
+      { id: '2', dni: '10002', apellido: 'B', nombres: 'Dos', nombre: 'B, Dos', anioIngreso: 2026, estadoInstitucional: 'activo', createdAt: '', updatedAt: '' },
+    ];
+    const subjects = [
+      { id: 's1', yearNumber: 1, name: 'Matemática', area: 'Exactas', active: true },
+      { id: 's2', yearNumber: 1, name: 'Lengua', area: 'Lengua', active: true },
+    ];
+    const grades = [
+      {
+        id: 'g1', academicYearId: '2026', studentDni: '10001', courseId: 'c1', subjectId: 's1', subjectName: 'Matemática',
+        val1: 'TEA' as const, nota1: 8, val2: 'TEA' as const, nota2: 9, intDicEstado: '' as const, intDicNota: null, intFebEstado: '' as const, intFebNota: null,
+        notaFinal: 9, estadoAcreditacion: 'acreditada' as const, updatedAt: '', updatedBy: '',
+      },
+      {
+        id: 'g2', academicYearId: '2026', studentDni: '10002', courseId: 'c1', subjectId: 's1', subjectName: 'Matemática',
+        val1: 'TEP' as const, nota1: 5, val2: '' as const, nota2: null, intDicEstado: '' as const, intDicNota: null, intFebEstado: '' as const, intFebNota: null,
+        notaFinal: null, estadoAcreditacion: 'intensificacion' as const, updatedAt: '', updatedBy: '',
+      },
+    ];
+    const res = classifyStudentsByRisk(students, subjects, grades);
+    expect(res.counts.all_approved).toBe(1);
+    expect(res.counts.one_two).toBe(1);
+    expect(res.details.find((d) => d.student.dni === '10002')?.riskSubjects[0].name).toBe('Matemática');
   });
 });

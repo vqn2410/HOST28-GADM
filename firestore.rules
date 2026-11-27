@@ -90,5 +90,17 @@ service cloud.firestore {
     match /sgae_intensification_plans/{docId} {
       allow read, write: if isAuthenticatedCompat();
     }
+    match /sgae_teacher_assignments/{docId} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /sgae_subject_attendance/{docId} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /sgae_daily_attendance/{docId} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /sgae_non_computable_days/{docId} {
+      allow read, write: if isAuthenticatedCompat();
+    }
   }
 }

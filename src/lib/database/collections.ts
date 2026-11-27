@@ -25,4 +25,14 @@ export const COLLECTIONS = {
   SUBJECTS: 'sgae_subjects',
   GRADES: 'sgae_grades',
   INTENSIFICATION_PLANS: 'sgae_intensification_plans',
+
+  // Asignaciones Docentes y Asistencia
+  TEACHER_ASSIGNMENTS: 'sgae_teacher_assignments',
+  SUBJECT_ATTENDANCE: 'sgae_subject_attendance',
+  DAILY_ATTENDANCE: 'sgae_daily_attendance',
+  NON_COMPUTABLE_DAYS: 'sgae_non_computable_days',
+
+  // Lectura de Educación Física (HOST28_EF — solo lectura)
+  EF_PARTES: 'partes',
+  EF_FERIADOS: 'feriados',
 } as const;

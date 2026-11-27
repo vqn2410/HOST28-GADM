@@ -16,6 +16,10 @@ import {
   ArrowLeft,
   Dumbbell,
   CalendarDays,
+  BarChart3,
+  CalendarCheck,
+  CalendarClock,
+  LayoutGrid,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/providers/AuthProvider';
@@ -32,6 +36,7 @@ import {
   saveIntensificationPlan,
   saveSubject,
 } from '@/repositories/gradesRepository';
+import { listTeacherAssignments } from '@/repositories/attendanceRepository';
 import { logAudit } from '@/repositories/auditRepository';
 import { downloadBulletinPdf, printBulletinPdf } from '@/templates/pdf/bulletinPdfGenerator';
 import { exportRowsToExcel } from '@/services/exportService';
@@ -47,6 +52,10 @@ import {
   Select,
   Textarea,
 } from '@/components/ui/Primitives';
+import { TrajectoryStatsTab } from '@/features/grades/components/TrajectoryStatsTab';
+import { LandscapeGradesGrid } from '@/features/grades/components/LandscapeGradesGrid';
+import { AttendanceTab } from '@/features/grades/components/AttendanceTab';
+import { TeacherAssignmentsTab } from '@/features/grades/components/TeacherAssignmentsTab';
 import type {
   IntensificationPeriod,
   IntensificationResult,
@@ -54,7 +63,14 @@ import type {
   StudentGradeRecord,
 } from '@/types/domain';
 
-type GradesTab = 'planilla' | 'boletines' | 'intensificacion' | 'materias';
+type GradesTab =
+  | 'planilla'
+  | 'estadisticas'
+  | 'asistencia'
+  | 'boletines'
+  | 'intensificacion'
+  | 'docentes'
+  | 'materias';
 
 interface EditableRow {
   val1: PreliminaryValuation;
@@ -94,7 +110,10 @@ export const CalificacionesAppPage: React.FC = () => {
   const { academicYears, selectedYearId, setSelectedYearId, settings } = useAcademicYear();
   const queryClient = useQueryClient();
 
+  const isTeacherOnly = user?.roleId === 'docente';
+
   const [activeTab, setActiveTab] = useState<GradesTab>('planilla');
+  const [planillaView, setPlanillaView] = useState<'individual' | 'apaisada'>('individual');
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [selectedStudentDni, setSelectedStudentDni] = useState('');
@@ -155,17 +174,42 @@ export const CalificacionesAppPage: React.FC = () => {
     queryKey: ['intensification-plans', selectedYearId],
     queryFn: () => listIntensificationPlans(selectedYearId),
   });
+  const assignmentsQuery = useQuery({
+    queryKey: ['teacher-assignments', selectedYearId],
+    queryFn: () => listTeacherAssignments(selectedYearId),
+  });
 
-  const courses = coursesQuery.data ?? [];
-  const effectiveCourseId = selectedCourseId || courses[0]?.id || '';
+  const allAssignments = assignmentsQuery.data ?? [];
+  const myAssignments = useMemo(
+    () => (isTeacherOnly && user ? allAssignments.filter((a) => a.teacherDni === user.dni) : allAssignments),
+    [allAssignments, isTeacherOnly, user]
+  );
+
+  // Docentes ven únicamente sus cursos y materias asignadas
+  const allCourses = coursesQuery.data ?? [];
+  const courses = useMemo(() => {
+    if (!isTeacherOnly) return allCourses;
+    const allowedCourseIds = new Set(myAssignments.map((a) => a.courseId));
+    return allCourses.filter((c) => allowedCourseIds.has(c.id));
+  }, [allCourses, isTeacherOnly, myAssignments]);
+
+  const effectiveCourseId =
+    courses.some((c) => c.id === selectedCourseId)
+      ? selectedCourseId
+      : courses[0]?.id || '';
   const currentCourse = courses.find((c) => c.id === effectiveCourseId) ?? null;
 
   const courseSubjects = useMemo(() => {
     if (!currentCourse) return [];
-    return (subjectsQuery.data ?? []).filter(
+    const base = (subjectsQuery.data ?? []).filter(
       (s) => s.active && s.yearNumber === currentCourse.yearNumber
     );
-  }, [subjectsQuery.data, currentCourse]);
+    if (!isTeacherOnly) return base;
+    const allowedSubjIds = new Set(
+      myAssignments.filter((a) => a.courseId === currentCourse.id).map((a) => a.subjectId)
+    );
+    return base.filter((s) => allowedSubjIds.has(s.id));
+  }, [subjectsQuery.data, currentCourse, isTeacherOnly, myAssignments]);
 
   const effectiveSubjectId =
     courseSubjects.some((s) => s.id === selectedSubjectId)
@@ -514,36 +558,103 @@ export const CalificacionesAppPage: React.FC = () => {
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Pestañas internas */}
-        <div className="flex flex-wrap gap-2 border-b border-border-subtle pb-3">
+        <div className="flex flex-wrap gap-2 border-b border-border-subtle pb-3 no-print">
           {[
-            { id: 'planilla', label: 'Planilla de Calificaciones', icon: <ClipboardCheck size={15} /> },
-            { id: 'boletines', label: 'Boletines RITE (PDF)', icon: <BookOpenCheck size={15} /> },
+            { id: 'planilla', label: 'Planilla de Calificaciones', icon: <ClipboardCheck size={15} />, show: true },
+            { id: 'asistencia', label: 'Asistencia (Materia / Preceptoría / EF)', icon: <CalendarCheck size={15} />, show: true },
+            { id: 'estadisticas', label: 'Estadísticas y Porcentajes', icon: <BarChart3 size={15} />, show: true },
+            { id: 'boletines', label: 'Boletines RITE (PDF)', icon: <BookOpenCheck size={15} />, show: !isTeacherOnly },
             {
               id: 'intensificacion',
-              label: `Intensificación de la Enseñanza (${intensificationItems.length})`,
+              label: `Intensificación (${intensificationItems.length})`,
               icon: <Flame size={15} />,
+              show: true,
             },
-            { id: 'materias', label: 'Materias por Año (PBA)', icon: <Plus size={15} /> },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id as GradesTab)}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === tab.id
-                  ? 'bg-brand-500 text-white shadow-xs'
-                  : 'bg-surface-card border border-border-subtle text-ink-secondary hover:text-ink-primary'
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
+            { id: 'docentes', label: 'Asignación Docente', icon: <CalendarClock size={15} />, show: !isTeacherOnly },
+            { id: 'materias', label: 'Materias PBA', icon: <Plus size={15} />, show: !isTeacherOnly },
+          ]
+            .filter((t) => t.show)
+            .map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id as GradesTab)}
+                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  activeTab === tab.id
+                    ? 'bg-brand-500 text-white shadow-xs'
+                    : 'bg-surface-card border border-border-subtle text-ink-secondary hover:text-ink-primary'
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
         </div>
+
+        {isTeacherOnly && courses.length === 0 && (
+          <Card className="p-8">
+            <EmptyState
+              title="Sin materias ni cursos asignados todavía"
+              description="Solicitá a Dirección o Preceptoría que te asigne tus cursos, materias y horarios en la pestaña Asignación Docente."
+            />
+          </Card>
+        )}
 
         {/* ═══════════════ TAB 1: PLANILLA DE CALIFICACIONES ═══════════════ */}
         {activeTab === 'planilla' && (
           <div className="space-y-5">
+            {!isTeacherOnly && (
+              <div className="inline-flex p-1 rounded-xl bg-surface-subtle border border-border-subtle gap-1 no-print">
+                <button
+                  type="button"
+                  onClick={() => setPlanillaView('individual')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${
+                    planillaView === 'individual'
+                      ? 'bg-brand-500 text-white'
+                      : 'text-ink-secondary hover:text-ink-primary'
+                  }`}
+                >
+                  <ClipboardCheck size={14} /> Por materia individual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlanillaView('apaisada')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${
+                    planillaView === 'apaisada'
+                      ? 'bg-brand-500 text-white'
+                      : 'text-ink-secondary hover:text-ink-primary'
+                  }`}
+                >
+                  <LayoutGrid size={14} /> Planilla apaisada (Todas las materias)
+                </button>
+              </div>
+            )}
+
+            {planillaView === 'apaisada' && !isTeacherOnly && currentCourse ? (
+              <div className="space-y-4">
+                <Card className="p-4 w-full sm:w-80 no-print">
+                  <FieldLabel>Curso</FieldLabel>
+                  <Select
+                    value={effectiveCourseId}
+                    onChange={(e) => setSelectedCourseId(e.target.value)}
+                  >
+                    {courses.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.label} — Turno {c.shiftName}
+                      </option>
+                    ))}
+                  </Select>
+                </Card>
+                <LandscapeGradesGrid
+                  course={currentCourse}
+                  rosterStudents={courseRoster.map((r) => r.student)}
+                  subjects={courseSubjects}
+                  grades={gradesQuery.data ?? []}
+                  academicYearId={selectedYearId}
+                />
+              </div>
+            ) : (
+              <>
             <Card className="p-4 flex flex-col lg:flex-row lg:items-end justify-between gap-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1">
                 <div>
@@ -808,7 +919,49 @@ export const CalificacionesAppPage: React.FC = () => {
                 </div>
               )}
             </Card>
+              </>
+            )}
           </div>
+        )}
+
+        {/* ═══════════════ TAB: ASISTENCIA (DOCENTES / PRECEPTORÍA / EF) ═══════════════ */}
+        {activeTab === 'asistencia' && (
+          <AttendanceTab
+            user={user}
+            isTeacherOnly={isTeacherOnly}
+            academicYearId={selectedYearId}
+            courses={courses}
+            selectedCourseId={effectiveCourseId}
+            onSelectCourse={setSelectedCourseId}
+            courseSubjects={courseSubjects}
+            selectedSubjectId={effectiveSubjectId}
+            onSelectSubject={setSelectedSubjectId}
+            rosterStudents={courseRoster.map((r) => r.student)}
+            assignments={myAssignments}
+          />
+        )}
+
+        {/* ═══════════════ TAB: ESTADÍSTICAS Y PORCENTAJES ═══════════════ */}
+        {activeTab === 'estadisticas' && (
+          <TrajectoryStatsTab
+            courses={courses}
+            selectedCourseId={effectiveCourseId}
+            onSelectCourse={setSelectedCourseId}
+            rosterStudents={courseRoster.map((r) => r.student)}
+            courseSubjects={courseSubjects}
+            allGrades={gradesQuery.data ?? []}
+            academicYearId={selectedYearId}
+          />
+        )}
+
+        {/* ═══════════════ TAB: ASIGNACIÓN DOCENTE ═══════════════ */}
+        {activeTab === 'docentes' && !isTeacherOnly && (
+          <TeacherAssignmentsTab
+            academicYearId={selectedYearId}
+            courses={allCourses}
+            subjects={subjectsQuery.data ?? []}
+            assignments={allAssignments}
+          />
         )}
 
         {/* ═══════════════ TAB 2: BOLETINES RITE (PDF) ═══════════════ */}

@@ -73,7 +73,7 @@ export const ROLE_DEFINITIONS: Record<RoleId, RoleDefinition> = {
   preceptoria: {
     id: 'preceptoria',
     name: 'Preceptoría',
-    description: 'Consulta y actualización de estudiantes, matrícula de cursos y emisión de certificados.',
+    description: 'Consulta y actualización de estudiantes, matrícula, asistencias, boletines y constancias.',
     permissions: [
       'students:read',
       'students:create',
@@ -82,6 +82,12 @@ export const ROLE_DEFINITIONS: Record<RoleId, RoleDefinition> = {
       'enrollments:manage',
       'certificates:issue',
     ],
+  },
+  docente: {
+    id: 'docente',
+    name: 'Docente',
+    description: 'Acceso acotado a sus materias y cursos asignados: calificaciones Res. 1650/24 y asistencia por materia.',
+    permissions: ['students:read'],
   },
   consulta: {
     id: 'consulta',

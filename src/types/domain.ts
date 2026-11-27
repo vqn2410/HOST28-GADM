@@ -245,6 +245,7 @@ export type RoleId =
   | 'conduccion'
   | 'secretaria'
   | 'preceptoria'
+  | 'docente'
   | 'consulta';
 
 export type Permission =
@@ -367,6 +368,83 @@ export interface IntensificationPlan {
   observaciones?: string;
   updatedAt: string;
   updatedBy: string;
+}
+
+// ────────────────────────── ASIGNACIONES DOCENTES Y ASISTENCIA ──────────────────────────
+
+/** Días hábiles: 1=Lunes, 2=Martes, 3=Miércoles, 4=Jueves, 5=Viernes */
+export interface TeacherAssignment {
+  id: string;
+  academicYearId: string;
+  teacherDni: string;
+  teacherName: string;
+  courseId: string;
+  courseLabel: string;
+  subjectId: string;
+  subjectName: string;
+  daysOfWeek: number[]; // [1..5]
+  schedule: string; // ej. "08:00 - 10:00"
+  updatedAt: string;
+}
+
+export type AttendanceMark = 'P' | 'A' | 'T' | 'J'; // Presente, Ausente, Tarde (0.5), Justificada
+
+export interface SubjectAttendanceRecord {
+  id: string; // `${academicYearId}_${courseId}_${subjectId}_${date}`
+  academicYearId: string;
+  courseId: string;
+  subjectId: string;
+  subjectName: string;
+  date: string; // YYYY-MM-DD
+  schedule?: string;
+  teacherDni: string;
+  teacherName: string;
+  marks: Record<string, AttendanceMark>; // dni -> mark
+  observations?: string;
+  updatedAt: string;
+}
+
+export interface DailyAttendanceRecord {
+  id: string; // `${academicYearId}_${courseId}_${date}`
+  academicYearId: string;
+  courseId: string;
+  courseLabel: string;
+  date: string; // YYYY-MM-DD (Lunes a Viernes)
+  takenByDni: string;
+  takenByName: string;
+  marks: Record<string, AttendanceMark>; // dni -> mark
+  observations?: string;
+  updatedAt: string;
+}
+
+export type NonComputableCause =
+  | 'Jornada Institucional'
+  | 'Paro / Medida de fuerza'
+  | 'Causas climáticas'
+  | 'Feriado / Asueto escolar'
+  | 'Suspensión por edificio / servicios'
+  | 'Otra causa';
+
+export interface NonComputableDay {
+  id: string;
+  academicYearId: string;
+  date: string; // YYYY-MM-DD
+  cause: NonComputableCause;
+  detail?: string;
+  scope: 'all' | string; // 'all' o courseId específico
+  createdBy: string;
+  createdAt: string;
+}
+
+/** Parte leído desde la colección compartida `partes` de HOST28_EF (solo lectura) */
+export interface EfParteRecord {
+  id: string;
+  fecha: string; // YYYY-MM-DD
+  curso: string; // ej. "1°1°"
+  turno?: string;
+  huboClase?: string; // "Sí" | "No"
+  motivoSuspension?: string;
+  asistencia?: Record<string, string>; // dni -> "Presente" | "Ausente"
 }
 
 export interface AuditLog {
