@@ -299,7 +299,75 @@ export type AuditOperation =
   | 'template_update'
   | 'settings_update'
   | 'user_permissions_update'
-  | 'user_create';
+  | 'user_create'
+  | 'grade_update'
+  | 'intensification_update';
+
+// ────────────────────────── RESOLUCIÓN 1650/24 PBA ──────────────────────────
+
+/** Valoración preliminar RITE: TEA (Avanzada), TEP (En Proceso), TED (Discontinua) */
+export type PreliminaryValuation = 'TEA' | 'TEP' | 'TED' | '';
+
+/** Estado en instancias de intensificación: AA (Aprobó y Acreditó), CCA (Continúa con Avances), CSA (Continúa sin Avances) */
+export type IntensificationResult = 'AA' | 'CCA' | 'CSA' | '';
+
+export type AccreditationStatus = 'en_curso' | 'acreditada' | 'intensificacion' | 'pendiente';
+
+export type IntensificationPeriod =
+  | 'diciembre'
+  | 'febrero_marzo'
+  | 'mayo'
+  | 'julio'
+  | 'octubre';
+
+export interface Subject {
+  id: string;
+  yearNumber: number; // 1..6
+  name: string;
+  area: string;
+  active: boolean;
+}
+
+export interface StudentGradeRecord {
+  id: string; // `${academicYearId}_${studentDni}_${subjectId}`
+  academicYearId: string;
+  studentDni: string;
+  courseId: string;
+  subjectId: string;
+  subjectName: string;
+  val1: PreliminaryValuation;
+  nota1: number | null; // 1..10 (acredita >= 7)
+  val2: PreliminaryValuation;
+  nota2: number | null; // 1..10 (acredita >= 7)
+  intDicEstado: IntensificationResult;
+  intDicNota: number | null; // 4..10 para acreditar
+  intFebEstado: IntensificationResult;
+  intFebNota: number | null; // 4..10 para acreditar
+  notaFinal: number | null;
+  estadoAcreditacion: AccreditationStatus;
+  observaciones?: string;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export interface IntensificationPlan {
+  id: string;
+  academicYearId: string;
+  studentDni: string;
+  studentName: string;
+  courseLabel: string;
+  subjectId: string;
+  subjectName: string;
+  period: IntensificationPeriod;
+  modality: 'intensificacion' | 'profundizacion' | 'recursada_edte';
+  contenidosPrioritarios: string;
+  result: IntensificationResult;
+  calificacion: number | null; // 4..10 si AA
+  docenteResponsable?: string;
+  observaciones?: string;
+  updatedAt: string;
+  updatedBy: string;
+}
 
 export interface AuditLog {
   id: string;

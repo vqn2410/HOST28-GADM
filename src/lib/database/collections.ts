@@ -20,4 +20,9 @@ export const COLLECTIONS = {
   SETTINGS: 'sgae_settings',
   SGAE_USERS: 'sgae_users',
   AUDIT_LOGS: 'sgae_audit_logs',
+
+  // Módulo Calificaciones, Boletines e Intensificación (Res. 1650/24 PBA)
+  SUBJECTS: 'sgae_subjects',
+  GRADES: 'sgae_grades',
+  INTENSIFICATION_PLANS: 'sgae_intensification_plans',
 } as const;

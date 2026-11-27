@@ -19,6 +19,9 @@ import {
   CalendarDays,
   ShieldCheck,
   QrCode,
+  BookOpenCheck,
+  Dumbbell,
+  ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
 import { useAcademicYear } from '@/providers/AcademicYearProvider';
@@ -313,6 +316,37 @@ export const AppLayout: React.FC = () => {
         })}
       </nav>
 
+      {/* Accesos externos / nueva pestaña en Sidebar */}
+      <div className="px-3 pb-2 space-y-1 border-t border-white/10 pt-3">
+        <a
+          href="/calificaciones"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-brand-500/20 hover:bg-brand-500/35 text-xs font-semibold text-blue-100 transition-colors"
+          title="Abrir Sistema de Calificaciones, Boletines e Intensificación (Res. 1650/24) en nueva pestaña"
+        >
+          <span className="flex items-center gap-2.5 min-w-0">
+            <BookOpenCheck size={16} className="text-gold-brand-500 shrink-0" />
+            {!collapsed && <span className="truncate">Calificaciones 1650/24</span>}
+          </span>
+          {!collapsed && <ExternalLink size={12} className="shrink-0 opacity-75" />}
+        </a>
+
+        <a
+          href="https://host-28-ef.vercel.app/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-emerald-brand-500/15 hover:bg-emerald-brand-500/30 text-xs font-semibold text-emerald-200 transition-colors"
+          title="Ir al Host de Educación Física (https://host-28-ef.vercel.app/)"
+        >
+          <span className="flex items-center gap-2.5 min-w-0">
+            <Dumbbell size={16} className="text-emerald-brand-500 shrink-0" />
+            {!collapsed && <span className="truncate">Educación Física</span>}
+          </span>
+          {!collapsed && <ExternalLink size={12} className="shrink-0 opacity-75" />}
+        </a>
+      </div>
+
       {/* Footer */}
       {!collapsed && (
         <div className="p-3 border-t border-white/10">
@@ -381,7 +415,33 @@ export const AppLayout: React.FC = () => {
             </form>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Botón Calificaciones Res. 1650/24 (nueva pestaña) */}
+            <a
+              href="/calificaciones"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold shadow-xs transition-colors"
+              title="Abrir Calificaciones, Boletines e Intensificación (Res. 1650/24) en nueva pestaña"
+            >
+              <BookOpenCheck size={14} />
+              <span className="hidden xl:inline">Calificaciones</span>
+              <ExternalLink size={11} className="opacity-80" />
+            </a>
+
+            {/* Botón Área Educación Física */}
+            <a
+              href="https://host-28-ef.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-brand-500 hover:bg-emerald-brand-600 text-white text-xs font-semibold shadow-xs transition-colors"
+              title="Ir al Host de Educación Física"
+            >
+              <Dumbbell size={14} />
+              <span className="hidden xl:inline">Educación Física</span>
+              <ExternalLink size={11} className="opacity-80" />
+            </a>
+
             {/* Selector global de Ciclo Lectivo */}
             <div className="flex items-center gap-2 bg-brand-50 dark:bg-brand-900/40 border border-brand-200 dark:border-brand-700 rounded-xl px-2.5 py-1.5">
               <CalendarDays size={15} className="text-brand-600 dark:text-brand-300 shrink-0" />

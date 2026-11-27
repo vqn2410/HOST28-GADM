@@ -79,5 +79,16 @@ service cloud.firestore {
       allow read, create: if isAuthenticatedCompat();
       allow update, delete: if false;
     }
+
+    // Módulo Calificaciones, Boletines e Intensificación (Res. 1650/24 PBA)
+    match /sgae_subjects/{docId} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /sgae_grades/{docId} {
+      allow read, write: if isAuthenticatedCompat();
+    }
+    match /sgae_intensification_plans/{docId} {
+      allow read, write: if isAuthenticatedCompat();
+    }
   }
 }

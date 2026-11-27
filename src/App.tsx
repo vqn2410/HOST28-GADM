@@ -105,6 +105,11 @@ const RolesPermissionsPage = lazy(() =>
 const AuditLogsPage = lazy(() =>
   import('@/features/audit/AuditLogsPage').then((m) => ({ default: m.AuditLogsPage }))
 );
+const CalificacionesAppPage = lazy(() =>
+  import('@/features/grades/CalificacionesAppPage').then((m) => ({
+    default: m.CalificacionesAppPage,
+  }))
+);
 
 const PageFallback = () => (
   <div className="p-6 space-y-4">
@@ -124,6 +129,16 @@ export const App: React.FC = () => {
           <Route path="/EMISION" element={<Navigate to="/emision" replace />} />
           <Route path="/validar" element={<PublicValidationPage />} />
           <Route path="/validar/:token" element={<PublicValidationPage />} />
+
+          {/* Módulo Calificaciones, Boletines e Intensificación (Res. 1650/24 PBA — nueva pestaña) */}
+          <Route
+            path="/calificaciones"
+            element={
+              <ProtectedRoute>
+                <CalificacionesAppPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Rutas administrativas protegidas */}
           <Route

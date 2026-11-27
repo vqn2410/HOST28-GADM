@@ -22,6 +22,10 @@ import {
   formatCertificateNumber,
 } from '@/repositories/certificateRepository';
 import {
+  evaluateRes1650Accreditation,
+  evaluateStudentTrajectoryRes1650,
+} from '@/repositories/gradesRepository';
+import {
   buildDefaultCoursesForYear,
   DEFAULT_CERTIFICATE_TEMPLATES,
   DEFAULT_SCHOOL_SETTINGS,
@@ -299,5 +303,69 @@ describe('SGAE — Control de Acceso Basado en Roles (RBAC)', () => {
     const disabledAdmin = makeUser('admin', false);
     expect(hasPermission(disabledAdmin, 'students:read')).toBe(false);
     expect(hasPermission(disabledAdmin, 'users:manage')).toBe(false);
+  });
+});
+
+describe('SGAE — Motor Académico Resolución 1650/24 PBA', () => {
+  it('acredita materia con >=7 en ambos cuatrimestres y envía a intensificación si <7', () => {
+    expect(
+      evaluateRes1650Accreditation({
+        nota1: 8,
+        nota2: 7,
+        intDicEstado: '',
+        intDicNota: null,
+        intFebEstado: '',
+        intFebNota: null,
+      })
+    ).toEqual({ estadoAcreditacion: 'acreditada', notaFinal: 8 });
+
+    expect(
+      evaluateRes1650Accreditation({
+        nota1: 6,
+        nota2: 8,
+        intDicEstado: '',
+        intDicNota: null,
+        intFebEstado: '',
+        intFebNota: null,
+      })
+    ).toEqual({ estadoAcreditacion: 'intensificacion', notaFinal: null });
+  });
+
+  it('acredita en intensificación con AA y nota >=4, y detecta alerta EDTE con 5+ materias', () => {
+    expect(
+      evaluateRes1650Accreditation({
+        nota1: 5,
+        nota2: 6,
+        intDicEstado: 'AA',
+        intDicNota: 6,
+        intFebEstado: '',
+        intFebNota: null,
+      })
+    ).toEqual({ estadoAcreditacion: 'acreditada', notaFinal: 6 });
+
+    const fivePending = Array.from({ length: 5 }, (_, i) => ({
+      id: `g_${i}`,
+      academicYearId: '2026',
+      studentDni: '45000001',
+      courseId: '2026_1_1',
+      subjectId: `s_${i}`,
+      subjectName: `Materia ${i}`,
+      val1: 'TED' as const,
+      nota1: 5,
+      val2: 'TEP' as const,
+      nota2: 5,
+      intDicEstado: 'CCA' as const,
+      intDicNota: null,
+      intFebEstado: '' as const,
+      intFebNota: null,
+      notaFinal: null,
+      estadoAcreditacion: 'intensificacion' as const,
+      updatedAt: '',
+      updatedBy: '',
+    }));
+
+    const traj = evaluateStudentTrajectoryRes1650(fivePending);
+    expect(traj.requiresEDTE).toBe(true);
+    expect(traj.totalPendientesOIntensif).toBe(5);
   });
 });
